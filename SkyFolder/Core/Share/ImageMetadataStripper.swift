@@ -90,16 +90,27 @@ public struct ImageMetadataStripper: Sendable {
         // `TIFF.ImageDescription` が空の値で出現した。**消すつもりの指定がキーを生やす。**
         //
         // 効いているのは下の `guard let source = original[dictionaryKey]` である。
-        // その内側の `where source[key] != nil` は**効いていない**
-        // （mutation で外しても結果が変わらないことを確認済み）。
-        // 辞書が元にあるなら、その中の存在しないキーへの `kCFNull` は無害だった。
-        // 残してあるのは将来の挙動変化への保険で、これが守っていると読まないこと。
-        func nullifyExisting(_ dictionaryKey: CFString, _ candidates: [CFString],
-                             keeping keep: [CFString] = []) {
-            // ← この guard が load-bearing
+
+        /// 元の辞書に**実在するキーを全部**潰す。`keeping` に挙げたものだけ残す。
+        ///
+        /// **候補一覧との積集合にしてはいけない。** そうすると一覧に無いキーは
+        /// `properties` に載らず、`AddImageFromSource` のマージで**元の値がそのまま
+        /// 出力へ引き継がれる**。実測（2026-09-01）: IPTC の `PersonInImage`
+        /// — 写真アプリや Lightroom の顔認識が書き込む**被写体本人の氏名** — が
+        /// 除去されずに残った。GPS も Byline も消えるのでユーザーには効いて見える。
+        /// SEC-08（MUST）が防ごうとしている被害そのもの。
+        ///
+        /// 「消したいキーを数える」のではなく「**残してよいキーだけを数える**」。
+        /// 一覧の更新漏れが**安全側に倒れる**のはこちらの向きだけ。
+        func nullifyAll(_ dictionaryKey: CFString, keeping keep: [CFString] = []) {
+            // ← この guard が load-bearing。
+            // M-26: 元に無い辞書へ kCFNull を渡すと、消すどころかキーを生やす。
             guard let source = original[dictionaryKey] as? [CFString: Any] else { return }
+            let keepNames = Set(keep.map { $0 as String })
             var result: [CFString: Any] = [:]
-            for key in candidates where source[key] != nil { result[key] = kCFNull }
+            for key in source.keys where !keepNames.contains(key as String) {
+                result[key] = kCFNull
+            }
             for key in keep { if let value = source[key] { result[key] = value } }
             guard !result.isEmpty else { return }
             properties[dictionaryKey] = result
@@ -120,11 +131,12 @@ public struct ImageMetadataStripper: Sendable {
         // **M-26**: PNG のテキストチャンクは PNG / IPTC / TIFF の**3 箇所に写し**が作られる。
         // `Author` は PNG と IPTC.Byline に、`Copyright` は PNG と IPTC.CopyrightNotice と
         // TIFF.Copyright に現れる。**3 つとも潰さないと消えない**（どれか 1 つでも残すとそこから復元される）。
-        nullifyExisting(kCGImagePropertyPNGDictionary, Self.identifyingPNGKeys)
-        nullifyExisting(kCGImagePropertyIPTCDictionary, Self.identifyingIPTCKeys)
-        // TIFF は Orientation だけ残す（DD-001 F-16）
-        nullifyExisting(kCGImagePropertyTIFFDictionary, Self.identifyingTIFFKeyList,
-                        keeping: [kCGImagePropertyTIFFOrientation])
+        // 3 辞書とも「**実在するキーを全部潰し、構造に要るものだけ残す**」。
+        // 残す一覧は `inspect` が識別情報として数えない一覧と**同じもの**を使う
+        // — ここがずれると、検査は検出できるのに除去だけが漏らす状態になる（実測で発生した）。
+        nullifyAll(kCGImagePropertyPNGDictionary, keeping: Self.structuralPNGKeyList)
+        nullifyAll(kCGImagePropertyIPTCDictionary)
+        nullifyAll(kCGImagePropertyTIFFDictionary, keeping: Self.structuralTIFFKeyList)
 
         // 保持: 回転情報（DD-001 F-16）。剥がすと公開画像が横倒しになる。
         //
@@ -190,77 +202,41 @@ public struct ImageMetadataStripper: Sendable {
         kCGImagePropertyExifPixelYDimension as String,
     ]
 
-    /// IPTC のうち識別情報になるもの。**個別に潰す**必要がある（M-26）。
-    static let identifyingIPTCKeys: [CFString] = [
-        kCGImagePropertyIPTCByline,
-        kCGImagePropertyIPTCBylineTitle,
-        kCGImagePropertyIPTCCaptionAbstract,
-        kCGImagePropertyIPTCCopyrightNotice,
-        kCGImagePropertyIPTCObjectName,
-        kCGImagePropertyIPTCKeywords,
-        kCGImagePropertyIPTCCredit,
-        kCGImagePropertyIPTCSource,
-        kCGImagePropertyIPTCContact,
-        kCGImagePropertyIPTCWriterEditor,
-        kCGImagePropertyIPTCHeadline,
-        kCGImagePropertyIPTCSpecialInstructions,
-        kCGImagePropertyIPTCCity,
-        kCGImagePropertyIPTCSubLocation,
-        kCGImagePropertyIPTCProvinceState,
-        kCGImagePropertyIPTCCountryPrimaryLocationName,
-        kCGImagePropertyIPTCDateCreated,
-        kCGImagePropertyIPTCTimeCreated,
-        kCGImagePropertyIPTCDigitalCreationDate,
-        kCGImagePropertyIPTCDigitalCreationTime,
-    ]
+    // MARK: - 残してよいキー（これ以外は全部潰す）
+    //
+    // **「消す一覧」ではなく「残す一覧」で持つ。** 消す一覧にすると、
+    // 一覧の更新漏れがそのまま漏洩になる（実測: IPTC の `PersonInImage` が残った）。
+    // 残す一覧なら、更新漏れは「消しすぎ」に倒れる。**安全側はこちらだけ。**
+    //
+    // `strip` の `keeping` と `inspect` の除外は、**同じ一覧を使う**こと。
+    // ずれると「検査は検出できるのに除去だけが漏らす」状態になる。
 
-    /// PNG のテキストチャンクのうち識別情報になるもの。
-    /// **個別に潰す**必要がある（辞書ごとの kCFNull では消えない）。
-    static let identifyingPNGKeys: [CFString] = [
-        kCGImagePropertyPNGAuthor,
-        kCGImagePropertyPNGCopyright,
-        kCGImagePropertyPNGDescription,
-        kCGImagePropertyPNGSoftware,
-        kCGImagePropertyPNGComment,
-        kCGImagePropertyPNGTitle,
-        kCGImagePropertyPNGDisclaimer,
-        kCGImagePropertyPNGSource,
-        kCGImagePropertyPNGWarning,
-        kCGImagePropertyPNGCreationTime,
-        kCGImagePropertyPNGModificationTime,
-        "XML:com.adobe.xmp" as CFString,
-    ]
+    /// IPTC は**丸ごと潰す**。構造・表示に要るキーは無い。
 
     /// PNG 書き出し時に ImageIO が付け直す構造的なキー。識別情報ではない。
-    private static let structuralPNGKeys: Set<String> = [
-        kCGImagePropertyPNGInterlaceType as String,
-        kCGImagePropertyPNGGamma as String,
-        kCGImagePropertyPNGsRGBIntent as String,
-        kCGImagePropertyPNGChromaticities as String,
+    static let structuralPNGKeyList: [CFString] = [
+        kCGImagePropertyPNGInterlaceType,
+        kCGImagePropertyPNGGamma,
+        kCGImagePropertyPNGsRGBIntent,
+        kCGImagePropertyPNGChromaticities,
     ]
 
-    /// 書き出し時に潰す TIFF のキー（順序つき）
-    static let identifyingTIFFKeyList: [CFString] = [
-        kCGImagePropertyTIFFMake,
-        kCGImagePropertyTIFFModel,
-        kCGImagePropertyTIFFSoftware,
-        kCGImagePropertyTIFFArtist,
-        kCGImagePropertyTIFFCopyright,
-        kCGImagePropertyTIFFDateTime,
-        kCGImagePropertyTIFFHostComputer,
-        kCGImagePropertyTIFFImageDescription,
+    private static let structuralPNGKeys: Set<String> =
+        Set(structuralPNGKeyList.map { $0 as String })
+
+    /// TIFF のうち画像の構造・表示に要るもの。**これ以外は全部潰す。**
+    static let structuralTIFFKeyList: [CFString] = [
+        // DD-001 F-16: 剥がすと公開画像が横倒しになる
+        kCGImagePropertyTIFFOrientation,
+        kCGImagePropertyTIFFXResolution,
+        kCGImagePropertyTIFFYResolution,
+        kCGImagePropertyTIFFResolutionUnit,
+        kCGImagePropertyTIFFCompression,
+        kCGImagePropertyTIFFPhotometricInterpretation,
     ]
 
-    private static let identifyingTIFFKeys: Set<String> = [
-        kCGImagePropertyTIFFMake as String,
-        kCGImagePropertyTIFFModel as String,
-        kCGImagePropertyTIFFSoftware as String,
-        kCGImagePropertyTIFFArtist as String,
-        kCGImagePropertyTIFFCopyright as String,
-        kCGImagePropertyTIFFDateTime as String,
-        kCGImagePropertyTIFFHostComputer as String,
-        kCGImagePropertyTIFFImageDescription as String,
-    ]
+    private static let structuralTIFFKeys: Set<String> =
+        Set(structuralTIFFKeyList.map { $0 as String })
 
     public func inspect(_ url: URL) -> Inspection {
         var result = Inspection()
@@ -277,8 +253,11 @@ public struct ImageMetadataStripper: Sendable {
             .filter { !Self.structuralExifKeys.contains($0) }.map { "Exif.\($0)" }
         result.identifyingKeys += keys(kCGImagePropertyExifAuxDictionary).map { "ExifAux.\($0)" }
         result.identifyingKeys += keys(kCGImagePropertyIPTCDictionary).map { "IPTC.\($0)" }
+        // 除去側（`strip` の `keeping`）と**同じ一覧**で除外する。
+        // かつては「識別情報の一覧に載っているものだけ」を数えていたため、
+        // 一覧外の TIFF キーは**除去側にも検査側にも見えない盲点**になっていた。
         result.identifyingKeys += keys(kCGImagePropertyTIFFDictionary)
-            .filter { Self.identifyingTIFFKeys.contains($0) }.map { "TIFF.\($0)" }
+            .filter { !Self.structuralTIFFKeys.contains($0) }.map { "TIFF.\($0)" }
         // MakerNote と PNG のテキストチャンクも検査対象に含める
         // — 検査していないものは「消せているつもり」になる（M-15 と同じ失敗の形）
         for key in Self.makerNoteKeys {
