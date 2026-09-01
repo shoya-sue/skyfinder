@@ -13,6 +13,9 @@
 
 以下の ID は設計書 §14.1 の M-01〜M-11 に続く番号として採番している。
 
+> **2026-09-01 追記**: 実装後の点検で **M-27**（自己診断が SEC-G06 の結果を実態と照合していなかった）を追加した。
+> これは設計書の誤りではなく実装側の欠陥で、**SEC-G06 (a) が未達であることが診断から見えなくなっていた**。§C を参照。
+
 ---
 
 ## A. 設計書の記述どおりに実装すると止まる・壊れるもの
@@ -380,16 +383,70 @@ Developer ID 署名では data protection が使えるはずなので、**G5-2 �
 
 ---
 
+### M-27 — 自己診断が SEC-G06 の結果を実態と照合していなかった（2026-09-01・修正済み）
+
+**該当**: SEC-G06 (a) / M-24 / `SelfTest.swift`
+
+M-24 で「使えるなら data protection keychain、駄目なら legacy へ落ちる。
+**落ちたことは `activeMode` で外から分かるようにし、診断画面に表示する
+— 黙って落ちると SEC-G06 (a) が満たされていない事実が見えなくなる**」と決めた。
+ところが `--selftest` の SEC-G06 は、その `activeMode` を読んでいなかった。
+
+```swift
+try keychain.write("probe", account: probeAccount)
+let readBack = try keychain.read(account: probeAccount)
+try keychain.delete(account: probeAccount)
+add("SEC-G06", "Keychain に書いて読んで消せる", readBack == "probe",
+    "data protection keychain が使える")   // ← 固定文字列。実態を見ていない
+```
+
+`KeychainStore.write` は `modesToTry = [.dataProtection, .legacy]` を順に試し、
+**data protection が落ちても legacy で成功すれば成功を返す**。
+したがって legacy へフォールバックしていても、診断は PASS で
+「data protection keychain が使える」と表示する。**避けようとした欠陥が表示側で復活していた。**
+
+**実測（2026-09-01・修正後に判明）**:
+
+| 項目 | 値 |
+|---|---|
+| 署名 | `flags=0x10002(adhoc,runtime)` / `TeamIdentifier=not set` |
+| **`activeMode`** | **`legacy`** |
+| 帰結 | `kSecAttrAccessible` は解釈されず、**画面ロック中も読める**。**SEC-G06 (a) は未達** |
+
+M-24 の実測（`errSecMissingEntitlement (-34018)`）は**現在も成り立っている**。
+修正前は「20/20 通過」と表示されており、**未達が診断からは一切見えなかった**。
+
+**実装**:
+
+- `SelfTest.Result` に `status`（`pass` / `warn` / `fail`）を導入。
+  `passed` は `status != .fail` の計算プロパティにしたので、終了コードを決める
+  `results.allSatisfy(\.passed)` は変更していない
+- SEC-G06 は `keychain.activeMode` を読み、`dataProtection` なら PASS、
+  **`legacy` なら WARN**（詳細に `activeMode=legacy` と未達の理由を出す）
+- **`warn` を `fail` にしなかった理由**: ad-hoc 署名では原理的に解消できないため、
+  落とすと開発ビルドが毎回失敗して**本当の失敗が埋もれる**。
+  代わりに見出しへ「（警告 N 件）」を出し、通過数からは除いた（`19/20 通過（警告 1 件）`）
+
+**テスト**: `SelfTestReportTests`（4 件）で「warn は通過数に数えない」「WARN ラベルが出る」
+「終了コードは落とさない」を固定した。
+`report` の集計を元の `filter(\.passed)` に戻す変異を当てて、**テストが検出することを確認済み**。
+
+> **一般化**: フォールバックを持つ実装の診断は、**成功可否ではなく「どちらの経路で成功したか」**を出す。
+> 詳細を固定文字列にすると、劣った経路へ落ちた事実が PASS の裏に隠れる。
+
+---
+
 ## D. 検証の状況
 
 ### 自動テスト
 
 ```
 ./scripts/test.sh
-→ 157 tests in 20 suites passed （約 95 秒）
+→ 161 tests in 21 suites passed （94.560 秒・2026-09-01 実測）
 ```
 
-内訳: 単体 127 件 + rcd 統合 30 件（実際に rclone を起動し NFS マウントする）。
+内訳: 単体 131 件 + rcd 統合 30 件（実際に rclone を起動し NFS マウントする）。
+（M-27 の `SelfTestReportTests` 4 件を追加して 157 → 161）
 
 設計書の T-Gxx は 39 件あり、うち **30 件を自動または実測で検証**している。
 残る 9 件は実 R2（6 件）・Developer ID（2 件）・Mac 再起動（1 件）を要するもの。
@@ -420,6 +477,7 @@ Hardened Runtime が掛かった実バイナリでしか確かめられない項
 | 期限 7 日上限のバリデーション | ✅ 検出 |
 | Exif 除去（GPS の `kCFNull`） | ✅ 検出 |
 | Orientation の保持 | ⚠️ 生き残り → **等価変異**と判明（M-16） |
+| 自己診断の warn 集計（M-27・2026-09-01） | ✅ 検出（`filter { $0.status == .pass }` → `filter(\.passed)` に戻すと `SelfTestReportTests` が落ちる） |
 
 ### 独立レビューの状況
 
@@ -469,6 +527,7 @@ Hardened Runtime が掛かった実バイナリでしか確かめられない項
 |---|---|---|
 | **G1-9** | 実 R2 アカウントでの通し確認（SigV4・マルチパート・U-13・U-04・M-03） | `./scripts/verify-r2.sh`（実装済み・認証情報が要る） |
 | **U-03（残り）** | **Developer ID 署名**での子プロセス実行 | Apple Developer Program 加入後に `--selftest` |
+| **SEC-G06 (a)** | **未達であることが 2026-09-01 に確定**（`activeMode=legacy`・M-27）。Developer ID 署名で data protection に切り替わるかは未確認 | 加入後に `--selftest` の SEC-G06 が PASS になるか（現在は WARN） |
 | **T-G28 / T-G29** | Developer ID 署名 + 公証 / 別 Mac で Gatekeeper 警告なし | 同上 + `notarytool` |
 | **T-G18** | Mac 再起動後にマウントが復活する | 実機で再起動 |
 | **T-G13 / T-G21 の実 R2 版** | 未送信件数の遷移 / 公開画像の Exif 検査 | G1-9 のあと |

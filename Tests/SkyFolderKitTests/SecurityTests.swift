@@ -433,3 +433,51 @@ struct ReviewFindingsTests {
         #expect(spec.contains("EXPANDED_CODE_SIGN_IDENTITY"))
     }
 }
+
+/// 自己診断が「満たせていない要件」を PASS の裏に隠さないことを固定する。
+///
+/// 元の実装は SEC-G06 の詳細に「data protection keychain が使える」を**固定文字列**で出しており、
+/// `KeychainStore` が legacy へフォールバックしても同じ表示になっていた（実測 `activeMode=legacy`）。
+/// フォールバックを持つ実装の診断は、成功可否ではなく**どちらの経路で成功したか**を出す必要がある。
+@Suite("自己診断の結果表示（未達を PASS に見せない）")
+struct SelfTestReportTests {
+
+    private func make(_ id: String, _ status: SelfTest.Result.Status) -> SelfTest.Result {
+        SelfTest.Result(id: id, name: "\(id) の検査", status: status, detail: "detail-\(id)")
+    }
+
+    /// `warn` は「この署名では原理的に解消できない未達」に使う。
+    /// 終了コード（`allSatisfy(\.passed)`）まで落とすと ad-hoc の開発ビルドが毎回失敗し、
+    /// 本当の失敗が埋もれる。**落とさない代わりに、表示では必ず見えなければならない**（下のテスト）。
+    @Test("warn は終了コードを落とさない。fail だけが落とす")
+    func warnDoesNotFailTheRun() {
+        #expect(make("W", .warn).passed)
+        #expect(make("P", .pass).passed)
+        #expect(!make("F", .fail).passed)
+    }
+
+    /// **今回直した欠陥そのもの。** warn を通過として数えたり PASS と表示したりすると、
+    /// 要件未達が診断から見えなくなる。
+    @Test("warn は通過数に数えず、WARN ラベルと見出しの件数の両方で見える")
+    func warnIsVisibleInReport() {
+        let text = SelfTest.report([make("A", .pass), make("B", .warn), make("C", .pass)])
+        #expect(text.contains("2/3 通過"))
+        #expect(text.contains("警告 1 件"))
+        #expect(text.contains("WARN  B"))
+        #expect(!text.contains("PASS  B"))
+    }
+
+    @Test("警告が無いときは見出しに警告件数を出さない")
+    func noWarningsKeepHeadlineClean() {
+        let text = SelfTest.report([make("A", .pass), make("B", .pass)])
+        #expect(text.contains("2/2 通過"))
+        #expect(!text.contains("警告"))
+    }
+
+    @Test("fail は FAIL として出て通過数に数えない")
+    func failIsReported() {
+        let text = SelfTest.report([make("A", .pass), make("B", .fail)])
+        #expect(text.contains("1/2 通過"))
+        #expect(text.contains("FAIL  B"))
+    }
+}

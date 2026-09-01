@@ -10,17 +10,33 @@ import AppKit
 public enum SelfTest {
 
     public struct Result: Sendable {
+        /// `warn` は「要件を満たせていないが、この署名では原理的に解消できない」ものに使う。
+        /// 落とすと ad-hoc の開発ビルドが毎回失敗し、本当の失敗が埋もれるため終了コードには効かせない。
+        /// **代わりに表示で必ず見えるようにする** — 黙って PASS にすると要件未達が台帳に載る。
+        public enum Status: String, Sendable {
+            case pass
+            case warn
+            case fail
+        }
+
         public let id: String
         public let name: String
-        public let passed: Bool
+        public let status: Status
         public let detail: String
+
+        /// 終了コードの判定に使う（`--selftest` は `allSatisfy(\.passed)` で 0 / 1 を決める）。
+        public var passed: Bool { status != .fail }
     }
 
     public static func run(rcloneURL: URL?) async -> [Result] {
         var results: [Result] = []
 
         func add(_ id: String, _ name: String, _ passed: Bool, _ detail: String) {
-            results.append(Result(id: id, name: name, passed: passed, detail: detail))
+            results.append(Result(id: id, name: name, status: passed ? .pass : .fail, detail: detail))
+        }
+
+        func add(_ id: String, _ name: String, _ status: Result.Status, _ detail: String) {
+            results.append(Result(id: id, name: name, status: status, detail: detail))
         }
 
         // --- 同梱バイナリの所在 ---
@@ -134,9 +150,24 @@ public enum SelfTest {
         do {
             try keychain.write("probe", account: probeAccount)
             let readBack = try keychain.read(account: probeAccount)
+            // **どちらの keychain へ書けたかを実際に読む。**
+            // `KeychainStore` は data protection が使えなければ legacy へ落ちて成功を返すので、
+            // 「書けた」だけでは SEC-G06 (a) の成否が分からない。delete より前に取る。
+            let mode = keychain.activeMode
             try keychain.delete(account: probeAccount)
-            add("SEC-G06", "Keychain に書いて読んで消せる", readBack == "probe",
-                "data protection keychain が使える")
+
+            if readBack != "probe" {
+                add("SEC-G06", "Keychain に書いて読んで消せる", Result.Status.fail,
+                    "書き戻した値が一致しない: \(readBack)")
+            } else if mode.satisfiesLockProtection {
+                add("SEC-G06", "Keychain に書いて読んで消せる", Result.Status.pass,
+                    "activeMode=\(mode.rawValue) — kSecAttrAccessibleWhenUnlocked が効く。SEC-G06 (a) 成立")
+            } else {
+                add("SEC-G06", "Keychain に書いて読んで消せる", Result.Status.warn,
+                    "activeMode=\(mode.rawValue) — data protection keychain に書けず login.keychain へ落ちた。"
+                    + "kSecAttrAccessible は無視され、画面ロック中も読める。SEC-G06 (a) は未達。"
+                    + "Developer ID 署名で再確認すること（G5-2）")
+            }
         } catch let error as KeychainError {
             var detail = String(describing: error)
             if case .writeFailed(let status) = error, status == -34018 {
@@ -162,11 +193,22 @@ public enum SelfTest {
     /// 標準出力に整形して出す。
     public static func report(_ results: [Result]) -> String {
         var lines: [String] = []
-        let passed = results.filter(\.passed).count
-        lines.append("SkyFolder 自己診断: \(passed)/\(results.count) 通過")
+        let passed = results.filter { $0.status == .pass }.count
+        let warned = results.filter { $0.status == .warn }.count
+        // 警告を件数として見出しに出す。ここに出さないと WARN 行は本文に埋もれる。
+        let headline = warned > 0
+            ? "SkyFolder 自己診断: \(passed)/\(results.count) 通過（警告 \(warned) 件）"
+            : "SkyFolder 自己診断: \(passed)/\(results.count) 通過"
+        lines.append(headline)
         lines.append(String(repeating: "-", count: 60))
         for r in results {
-            lines.append("\(r.passed ? "PASS" : "FAIL")  \(r.id.padding(toLength: 8, withPad: " ", startingAt: 0)) \(r.name)")
+            let label: String
+            switch r.status {
+            case .pass: label = "PASS"
+            case .warn: label = "WARN"
+            case .fail: label = "FAIL"
+            }
+            lines.append("\(label)  \(r.id.padding(toLength: 8, withPad: " ", startingAt: 0)) \(r.name)")
             if !r.detail.isEmpty { lines.append("      \(r.detail)") }
         }
         return lines.joined(separator: "\n")

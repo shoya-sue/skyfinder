@@ -24,3 +24,6 @@ DerivedData/
 .playwright-mcp/
 ab/
 *.bak
+
+# writgate の依頼ごとの契約（セッション固有）
+.writgate/
