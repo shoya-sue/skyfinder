@@ -56,7 +56,7 @@ R2 バケットの作成・API トークン発行・カスタムドメイン接�
 
 ```
 ./scripts/build.sh release     ビルド（同梱 rclone 取得 → アセット生成 → 署名 → 自己診断）
-./scripts/test.sh              全テスト（157 件・約 95 秒）
+./scripts/test.sh              全テスト（161 件・約 95 秒）
 ./scripts/verify-r2.sh         G1-9 実 R2 アカウントでの通し確認（認証情報が要る）
 ```
 
@@ -64,10 +64,10 @@ R2 バケットの作成・API トークン発行・カスタムドメイン接�
 
 | | 内容 |
 |---|---|
-| 自動テスト | **157 件全通過**（うち rcd 統合 30 件）。統合テストは実際に rclone を起動し NFS マウントする |
-| 署名済み `.app` での自己診断 | **20/20 通過**（`--selftest`）。Hardened Runtime 下でしか確かめられない項目を含む |
+| 自動テスト | **161 件全通過**（うち rcd 統合 30 件）。統合テストは実際に rclone を起動し NFS マウントする |
+| 署名済み `.app` での自己診断 | **19/20 通過・警告 1 件**（`--selftest`）。Hardened Runtime 下でしか確かめられない項目を含む。警告は **SEC-G06 (a) が ad-hoc 署名では未達**であること（M-27・`STATUS.md` §2） |
 | GUI | 起動してオンボーディングが描画されることを実機で確認 |
-| mutation | 主要ガード 9 件に変異を当て、生き残り 2 件は**等価変異**（消しても結果が変わらない冗長コード）と切り分け済み |
+| mutation | 主要ガード 9 件に変異を当て、生き残り 2 件は**等価変異**（消しても結果が変わらない冗長コード）と切り分け済み。2026-09-01 に自己診断の warn 集計（M-27）を追加し、**検出することを確認** |
 
 ### 実装で解消した未検証事項
 
@@ -126,7 +126,7 @@ SkyFolder/
   UI/                        画面（§5.1〜§5.5・§10.2）
   Resources/                 Info.plist / entitlements / 同梱 rclone
   Assets.xcassets/           生成物（make-assets.sh が作る）
-Tests/SkyFolderKitTests/     157 件
+Tests/SkyFolderKitTests/     161 件
 ```
 
 ## 冪等性（v1.2 で実測・GUI 版 §8.6）

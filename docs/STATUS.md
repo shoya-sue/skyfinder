@@ -35,7 +35,7 @@
 
 | 対象 | 結果 | 証拠 | 実施 |
 |---|---|---|---|
-| 自動テスト | **161 件全通過**（21 suites・94.560 秒） | `./scripts/test.sh` — 2026-09-01 に実行 | 2026-09-01 |
+| 自動テスト | **161 件全通過**（21 suites・約 95 秒） | `./scripts/test.sh` — 2026-09-01 に 3 回実行し、いずれも全通過 | 2026-09-01 |
 | 署名済み `.app` の自己診断 | **19/20 通過・警告 1 件・FAIL なし**（警告は SEC-G06。下の行を参照） | `./scripts/build.sh release` → `--selftest`。署名は `flags=0x10002(adhoc,runtime)` / `TeamIdentifier=not set` | 2026-09-01 |
 | U-03（ad-hoc の範囲） | Hardened Runtime 下で同梱 rclone を子プロセス実行できる | `--selftest` の U-03 が PASS（rclone v1.75.0 を取得） | 2026-09-01 |
 | T-G30 | 配布物の SHA-256 が `BUNDLED.md` と一致（`f52ccc22…`）。署名後の実体は別値（`dcb48186…`）で正常 | `--selftest` の T-G30 / T-G30b | 2026-09-01 |

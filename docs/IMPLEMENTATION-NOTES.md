@@ -442,7 +442,7 @@ M-24 の実測（`errSecMissingEntitlement (-34018)`）は**現在も成り立�
 
 ```
 ./scripts/test.sh
-→ 161 tests in 21 suites passed （94.560 秒・2026-09-01 実測）
+→ 161 tests in 21 suites passed （2026-09-01 実測。所要は 91.5〜94.6 秒で振れる）
 ```
 
 内訳: 単体 131 件 + rcd 統合 30 件（実際に rclone を起動し NFS マウントする）。
@@ -459,7 +459,7 @@ T-G05 / T-G06 / T-G16 / T-G31 / T-G32 / E-05
 
 ```
 ./scripts/build.sh release
-→ SkyFolder 自己診断: 20/20 通過
+→ SkyFolder 自己診断: 19/20 通過（警告 1 件）
 ```
 
 GUI の起動も実機で確認した（オンボーディングが描画され、ロゴの透過と
