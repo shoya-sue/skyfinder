@@ -1,0 +1,874 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FL-R2FS-DD-001 — R2 × Mac Finder マウント &amp; 外部公開ストレージ 詳細設計書 v1.4</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+JP:wght@400;500;600;700&family=IBM+Plex+Mono:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#F4F6F7;
+  --panel:#FFFFFF;
+  --ink:#16232B;
+  --ink-soft:#4A5A64;
+  --line:#D8DFE3;
+  --line-strong:#B7C2C9;
+  --accent:#E8710A;        /* R2 orange (subject-grounded) */
+  --accent-deep:#B45309;
+  --steel:#2E5E7E;         /* mount / Mac plane */
+  --steel-bg:#EAF1F6;
+  --ok:#1E7F4F;
+  --warn:#B4540A;
+  --danger:#B3261E;
+  --code-bg:#101A20;
+  --code-ink:#DCE7EC;
+  --code-accent:#F5A35C;
+  --mono:'IBM Plex Mono',ui-monospace,Menlo,monospace;
+  --sans:'IBM Plex Sans JP',system-ui,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--paper);color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.85;padding-bottom:120px}
+.wrap{max-width:980px;margin:0 auto;padding:0 28px}
+
+/* ============ header ============ */
+header{border-bottom:3px solid var(--ink);background:var(--panel)}
+.doc-strip{display:flex;flex-wrap:wrap;gap:0;border-bottom:1px solid var(--line);font-family:var(--mono);font-size:11.5px}
+.doc-strip span{padding:8px 16px;border-right:1px solid var(--line);color:var(--ink-soft)}
+.doc-strip b{color:var(--ink);font-weight:600}
+.hero{padding:44px 0 36px}
+.hero .key{font-family:var(--mono);font-size:13px;color:var(--accent-deep);letter-spacing:.04em;margin-bottom:14px}
+.hero h1{font-size:29px;font-weight:700;line-height:1.45;letter-spacing:.01em}
+.hero h1 em{font-style:normal;color:var(--accent);border-bottom:4px solid var(--accent)}
+.hero p.sub{margin-top:16px;color:var(--ink-soft);font-size:14.5px;max-width:760px}
+.meta-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);margin-top:28px}
+.meta-grid div{background:var(--panel);padding:10px 14px}
+.meta-grid .k{font-family:var(--mono);font-size:10.5px;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.08em}
+.meta-grid .v{font-size:13.5px;font-weight:600;margin-top:2px}
+
+/* ============ TOC ============ */
+nav.toc{background:var(--panel);border:1px solid var(--line);border-top:3px solid var(--steel);margin:36px 0;padding:22px 26px}
+nav.toc h2{font-family:var(--mono);font-size:12px;letter-spacing:.1em;color:var(--steel);margin-bottom:12px}
+nav.toc ol{list-style:none;columns:2;column-gap:40px}
+nav.toc li{margin:5px 0;font-size:13.5px;break-inside:avoid}
+nav.toc a{color:var(--ink);text-decoration:none;border-bottom:1px dotted var(--line-strong)}
+nav.toc a:hover{color:var(--accent-deep);border-color:var(--accent)}
+nav.toc .n{font-family:var(--mono);font-size:11.5px;color:var(--ink-soft);margin-right:8px}
+
+/* ============ sections — object-key breadcrumb signature ============ */
+section{margin-top:64px}
+.sec-key{font-family:var(--mono);font-size:12px;color:var(--accent-deep);background:linear-gradient(90deg,#FDEEDD 0,#FDEEDD 100%);display:inline-block;padding:3px 12px;border-left:3px solid var(--accent)}
+section>h2{font-size:22px;font-weight:700;margin:12px 0 6px;letter-spacing:.01em}
+section>p.lead{color:var(--ink-soft);font-size:14px;margin-bottom:18px;max-width:820px}
+h3{font-size:16.5px;font-weight:700;margin:34px 0 10px;padding-left:12px;border-left:4px solid var(--steel)}
+h4{font-size:14.5px;font-weight:700;margin:24px 0 8px;color:var(--steel)}
+p{margin:10px 0;max-width:860px}
+ul.plain{margin:8px 0 8px 22px}
+ul.plain li{margin:5px 0}
+strong{font-weight:700}
+
+/* ============ tables ============ */
+table{width:100%;border-collapse:collapse;margin:16px 0;background:var(--panel);font-size:13.5px}
+th{background:var(--ink);color:#fff;text-align:left;padding:9px 12px;font-weight:600;font-size:12.5px;letter-spacing:.03em}
+td{border:1px solid var(--line);padding:9px 12px;vertical-align:top}
+tr:nth-child(even) td{background:#FAFBFC}
+td.mono, .mono{font-family:var(--mono);font-size:12.5px}
+td.c{text-align:center}
+.tag{display:inline-block;font-family:var(--mono);font-size:10.5px;font-weight:600;padding:1px 8px;border-radius:2px;letter-spacing:.04em}
+.tag.must{background:#FBE9E7;color:var(--danger);border:1px solid #E8B3AF}
+.tag.should{background:#FFF3E0;color:var(--warn);border:1px solid #EFC9A0}
+.tag.may{background:#E8F0E9;color:var(--ok);border:1px solid #BAD6C3}
+.tag.adopt{background:var(--accent);color:#fff}
+.tag.reject{background:#EDF0F2;color:var(--ink-soft);border:1px solid var(--line-strong)}
+.tag.phase{background:var(--steel);color:#fff}
+
+/* ============ code ============ */
+pre{background:var(--code-bg);color:var(--code-ink);font-family:var(--mono);font-size:12.5px;line-height:1.75;padding:18px 20px;overflow-x:auto;margin:14px 0;border-left:4px solid var(--accent)}
+pre .cm{color:#7E9AA8}
+pre .hl{color:var(--code-accent)}
+code{font-family:var(--mono);font-size:.92em;background:#E9EEF1;padding:1px 6px;border-radius:2px;color:#1F3540}
+pre code{background:none;padding:0;color:inherit}
+.file-label{font-family:var(--mono);font-size:11px;color:#fff;background:var(--ink);display:inline-block;padding:3px 12px;margin-bottom:-14px;position:relative;z-index:1}
+
+/* ============ callouts ============ */
+.box{border:1px solid var(--line);background:var(--panel);padding:16px 20px;margin:16px 0}
+.box.decide{border-left:5px solid var(--accent)}
+.box.warn{border-left:5px solid var(--warn);background:#FFF9F2}
+.box.danger{border-left:5px solid var(--danger);background:#FDF4F3}
+.box.info{border-left:5px solid var(--steel);background:var(--steel-bg)}
+.box .box-t{font-family:var(--mono);font-size:11px;font-weight:600;letter-spacing:.08em;margin-bottom:6px}
+.box.decide .box-t{color:var(--accent-deep)}
+.box.warn .box-t{color:var(--warn)}
+.box.danger .box-t{color:var(--danger)}
+.box.info .box-t{color:var(--steel)}
+
+/* ============ conclusion panel ============ */
+.conclusion{background:var(--ink);color:#EAF0F3;padding:30px 32px;margin:36px 0;border-top:5px solid var(--accent)}
+.conclusion h2{font-size:17px;color:#fff;margin-bottom:14px;font-family:var(--mono);letter-spacing:.06em}
+.conclusion ol{margin-left:22px}
+.conclusion li{margin:9px 0;line-height:1.8}
+.conclusion b{color:var(--code-accent)}
+.conclusion code{background:#22333D;color:#F0C9A0}
+
+/* ============ architecture diagram ============ */
+.arch{background:var(--panel);border:1px solid var(--line);padding:26px;margin:20px 0;overflow-x:auto}
+.arch pre{background:none;color:var(--ink);border:none;padding:0;font-size:12px;line-height:1.6}
+.arch .a{color:var(--accent-deep);font-weight:600}
+.arch .s{color:var(--steel);font-weight:600}
+.arch .g{color:var(--ink-soft)}
+
+/* ============ phase cards ============ */
+.phase-card{border:1px solid var(--line);background:var(--panel);margin:18px 0}
+.phase-head{display:flex;align-items:baseline;gap:14px;padding:14px 20px;border-bottom:1px solid var(--line);background:linear-gradient(90deg,var(--steel-bg),var(--panel))}
+.phase-head .pn{font-family:var(--mono);font-weight:600;font-size:13px;color:#fff;background:var(--steel);padding:2px 12px}
+.phase-head .pt{font-weight:700;font-size:15.5px}
+.phase-head .pd{margin-left:auto;font-family:var(--mono);font-size:12px;color:var(--ink-soft)}
+.phase-body{padding:6px 20px 18px}
+
+footer{margin-top:80px;border-top:3px solid var(--ink);padding-top:18px;font-family:var(--mono);font-size:11.5px;color:var(--ink-soft);display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px}
+@media(max-width:720px){nav.toc ol{columns:1}.hero h1{font-size:23px}}
+@media print{body{padding-bottom:0}pre{white-space:pre-wrap}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <div class="doc-strip">
+      <span>DOC ID <b>FL-R2FS-DD-001</b></span>
+      <span>VER <b>1.4</b></span>
+      <span>DATE <b>2026-07-18</b></span>
+      <span>STATUS <b>Approved for Implementation</b></span>
+      <span>AUTHOR <b>shoya-sue / fracturelab.dev</b></span>
+      <span>IMPLEMENTER <b>Claude Opus 4.8 (delegated agent)</b></span>
+    </div>
+    <div class="hero">
+      <div class="key">r2://fracturelab/specs/FL-R2FS-DD-001/</div>
+      <h1>Cloudflare R2 × macOS Finder マウント<br>＋ <em>外部公開ストレージ</em> 詳細設計書</h1>
+      <p class="sub">R2 バケットを Mac の Finder にネイティブドライブとして常時マウントし、同一基盤から任意ファイルを外部公開（恒久 URL／期限付き URL）できる個人ストレージシステムの完全設計。実装エージェントが本書のみを入力として、追加の判断なしに構築を完了できる粒度で記述する。</p>
+      <div class="meta-grid">
+        <div><div class="k">Mount Method</div><div class="v">rclone nfsmount（kext 不要）</div></div>
+        <div><div class="k">Publish Method</div><div class="v">R2 カスタムドメイン + presigned URL</div></div>
+        <div><div class="k">Target OS</div><div class="v">macOS 14+ / Apple Silicon</div></div>
+        <div><div class="k">月額コスト目安</div><div class="v">〜100GB で $1.35/月（egress $0）</div></div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+
+<!-- ================= CONCLUSION ================= -->
+<div class="conclusion" id="s0">
+  <h2>§00 結論（TL;DR）</h2>
+  <ol>
+    <li><b>マウント方式は rclone nfsmount を採用</b>する。macOS 内蔵 NFS クライアント経由でマウントするため <b>macFUSE（kext）も FUSE-T も不要</b>。Apple Silicon でセキュリティ設定の変更が一切不要であり、launchd で常駐化する。</li>
+    <li><b>バケットは private / public の 2 バケット物理分離</b>とする（<code>flab-stor-private</code> / <code>flab-stor-public</code>）。カスタムドメイン公開はバケット全体に効くため、prefix 分離では誤公開リスクを排除できない。Finder には 2 つのドライブとして両方マウントする。</li>
+    <li><b>恒久公開は <code>files.fracturelab.dev</code>（R2 カスタムドメイン）</b>。public バケットに置いたファイルは即座に <code>https://files.fracturelab.dev/&lt;key&gt;</code> で公開される。r2.dev サブドメインはレート制限付きのため開発確認専用。</li>
+    <li><b>期限付き共有は presigned URL</b>。<code>rclone link --expire 24h</code> 一発で private バケット内ファイルの時限 URL を発行できる（S3 API ドメイン経由・カスタムドメイン不可という制約あり）。</li>
+    <li><b>フォーマット（構成規約）</b>: キーは NFC 正規化 UTF-8・ASCII 推奨、public バケットは <code>{カテゴリ}/{YYYY}/{slug}.{ext}</code>、private は用途 prefix（<code>vault-backup/</code> 等）。<code>.DS_Store</code> / <code>._*</code> はマウント側で exclude する。<b>画像の公開は r2share pub 経由とし、Exif（GPS 等）を自動除去してからアップロードする（SEC-08）</b>。</li>
+    <li><b>ロードマップは 4 フェーズ・正味 3〜4 時間</b>: P0 R2 準備(30m) → P1 マウント+常駐化(60m) → P2 外部公開(45m) → P3 共有 CLI+運用整備(60m)。P3 の Worker プロキシ（認証付き配信）はオプション。</li>
+  </ol>
+</div>
+
+<!-- ========== §0.5 v1.4 認識合わせ確定事項 ========== -->
+<div class="wrap" style="max-width:980px;margin:0 auto;padding:0 28px">
+<div class="box decide" id="s0b" style="margin:24px 0">
+  <div class="box-t">§0.5 実装前・認識合わせ確定事項（v1.4 追記 — 外部監修 codex / grok の収束指摘を集約）</div>
+  <p>以下は<strong>新規の設計変更ではなく、本書に既述の前提のうち実装者が見落としやすい要点の集約</strong>である。着手前に必ず本節を読むこと。各項の詳細は指示先の節に従う。</p>
+  <ol style="margin-left:22px">
+    <li><strong>public は秘匿性ゼロ</strong>。key を知れば誰でも読める。公開後は key 不変・削除でなく <code>gone/</code> へ移動（§4.4 / §7.1 CAUTION）。機微情報は絶対に public へ置かない。</li>
+    <li><strong>画像公開は原則 <code>r2share pub</code> 経由</strong>。Finder で public へ直置きすると Exif（GPS 等）除去が働かない（SEC-08 / §8.3）。直置き時は手動 <code>exiftool -all=</code> を要する。<em>設計上「D&amp;D で即公開」と衝突する最大の運用リスク。</em></li>
+    <li><strong>保存 ≠ 即クラウド同期</strong>。VFS write-back（15s + 転送）で反映は「約 30 秒以内」。書込み直後の電源断でキャッシュ中データは失われ得る（R-03 / D-05）。</li>
+    <li><strong>単一利用者・実質単一編集端末・常時接続が前提</strong>。localhost NFS は認証なし待受のため、共有 Mac・ゲスト有効環境では本方式を使用しない（SEC-09 / R-04 / R-06）。前提が変わる場合は本書の改版を要する。</li>
+    <li><strong>疎通確認に <code>rclone lsd r2:</code> を使わない</strong>。必ずバケット名付き（<code>rclone lsd r2:flab-stor-private</code> 等）。バケットスコープトークン（D-06）では ListBuckets が失敗し「トークン不良」と誤診断する（§6.2 / T-01 / F-01）。</li>
+    <li><strong>変更してよいのはプレースホルダ 4 つのみ</strong>（§14.1）。バケット名・ドメイン・マウントパス・launchd Label・マウントフラグは固定。逸脱は本書の改版が先（チューニングは §6.5 の許容範囲のみ）。</li>
+  </ol>
+  <p style="margin-bottom:0"><strong>再マウント挙動の注記</strong>: launchd の再起動は<strong>異常終了時のみ</strong>（<code>KeepAlive.SuccessfulExit=false</code>）。Finder で「取り出し」た場合は exit 0 のため<strong>自動復帰しない</strong>。復帰は <code>launchctl kickstart gui/$(id -u)/dev.fracturelab.r2mount.private</code>（§6.4）。</p>
+</div>
+</div>
+
+<!-- ================= TOC ================= -->
+<nav class="toc">
+  <h2>// INDEX</h2>
+  <ol>
+    <li><span class="n">01</span><a href="#s1">目的・スコープ</a></li>
+    <li><span class="n">02</span><a href="#s2">システム全体像</a></li>
+    <li><span class="n">03</span><a href="#s3">技術選定と決定事項（決定マトリクス）</a></li>
+    <li><span class="n">04</span><a href="#s4">フォーマット設計（バケット・キー・命名規約）</a></li>
+    <li><span class="n">05</span><a href="#s5">R2 側構築仕様</a></li>
+    <li><span class="n">06</span><a href="#s6">Mac 側構築仕様（rclone / nfsmount / launchd）</a></li>
+    <li><span class="n">07</span><a href="#s7">外部公開レイヤ仕様</a></li>
+    <li><span class="n">08</span><a href="#s8">共有 CLI（r2share）仕様</a></li>
+    <li><span class="n">09</span><a href="#s9">セキュリティ要件</a></li>
+    <li><span class="n">10</span><a href="#s10">コスト設計</a></li>
+    <li><span class="n">11</span><a href="#s11">実装ロードマップ（フェーズ別受入基準付き）</a></li>
+    <li><span class="n">12</span><a href="#s12">テスト計画</a></li>
+    <li><span class="n">13</span><a href="#s13">既知の制約・リスクと対処</a></li>
+    <li><span class="n">14</span><a href="#s14">プレースホルダ一覧・用語・参照</a></li>
+  </ol>
+</nav>
+
+<!-- ================= 01 ================= -->
+<section id="s1">
+  <div class="sec-key">r2://spec/01_scope/</div>
+  <h2>01. 目的・スコープ</h2>
+
+  <h3>1.1 目的</h3>
+  <ul class="plain">
+    <li>Cloudflare R2 を <strong>Finder からドラッグ&amp;ドロップで扱える常設ネットワークドライブ</strong>として利用可能にする（読み書き両対応）。</li>
+    <li>同じ基盤から、ファイル単位で <strong>(a) 恒久公開 URL</strong> と <strong>(b) 期限付き共有 URL</strong> を発行できるようにする。</li>
+    <li>egress 無料という R2 の特性を活かし、Dropbox / Google Drive 的な用途（配布・バックアップ・素材置き場）を <strong>従量 $1〜2/月クラス</strong>で実現する。</li>
+  </ul>
+
+  <h3>1.2 スコープ</h3>
+  <table>
+    <tr><th style="width:110px">区分</th><th>内容</th></tr>
+    <tr><td><span class="tag adopt">IN</span></td><td>R2 バケット設計 / API トークン設計 / rclone 設定 / nfsmount 常駐化（launchd）/ カスタムドメイン公開 / presigned URL 共有 CLI / CORS / キャッシュ制御 / コスト・テスト・運用手順</td></tr>
+    <tr><td><span class="tag reject">OUT</span></td><td>複数ユーザーのアカウント管理・Web UI 付きファイルマネージャ（将来 Worker で拡張可能、§7.4 に接続点のみ定義）/ Windows・Linux クライアント / Time Machine 用途（スパースバンドルは非推奨、§13 参照）</td></tr>
+  </table>
+
+  <h3>1.3 前提環境</h3>
+  <table>
+    <tr><th>項目</th><th>値</th><th>備考</th></tr>
+    <tr><td>クライアント</td><td>macOS 14 Sonoma 以降 / Apple Silicon（M4 Pro, Mac mini M4）</td><td>Intel Mac も同手順で動作するが本書の検証対象外</td></tr>
+    <tr><td>Cloudflare</td><td>アカウント保有・ゾーン <code class="mono">fracturelab.dev</code> が Cloudflare DNS 管理下</td><td>カスタムドメイン公開の必須条件</td></tr>
+    <tr><td>rclone</td><td>v1.68 以上（Homebrew 最新で可）</td><td>nfsmount は v1.65+ で利用可。新しいほど良い</td></tr>
+    <tr><td>ネットワーク</td><td>常時接続。オフライン編集は VFS キャッシュ範囲でのみ可</td><td>§13 R-06 参照</td></tr>
+  </table>
+</section>
+
+<!-- ================= 02 ================= -->
+<section id="s2">
+  <div class="sec-key">r2://spec/02_architecture/</div>
+  <h2>02. システム全体像</h2>
+  <p class="lead">システムは「マウント面（Plane A）」と「公開面（Plane B)」の 2 面で構成する。両面は同じ R2 アカウント上の別バケットを参照し、公開面に置いた瞬間に外部公開される、という単純なメンタルモデルを維持する。</p>
+
+  <div class="arch"><pre>
+┌──────────────────────────── <span class="s">Plane A: Mount（私有・読み書き）</span> ────────────────────────────┐
+│                                                                                          │
+│  macOS Finder                                                                            │
+│   ├─ /Volumes 相当: <span class="s">~/R2/private</span>  ◄── mount ──┐                                        │
+│   └─ /Volumes 相当: <span class="s">~/R2/public</span>   ◄── mount ──┤                                        │
+│                                                │                                         │
+│              macOS 内蔵 NFSv3 クライアント      │                                         │
+│                        ▲                       │                                         │
+│                        │ localhost NFS         │                                         │
+│              ┌─────────┴──────────┐            │                                         │
+│              │ <span class="s">rclone nfsmount</span> ×2 │────────────┘   (launchd 常駐 / VFS full cache)      │
+│              └─────────┬──────────┘                                                      │
+│                        │ S3 API (SigV4 / HTTPS)                                          │
+└────────────────────────┼─────────────────────────────────────────────────────────────────┘
+                         ▼
+        <span class="g">https://{{ACCOUNT_ID}}.r2.cloudflarestorage.com</span>
+              ┌──────────────────────────┐
+              │  <span class="a">Cloudflare R2</span>           │
+              │  ├─ bucket: <span class="s">flab-stor-private</span>  ← presigned URL（期限付き共有）─────┐
+              │  └─ bucket: <span class="a">flab-stor-public</span>   ← custom domain（恒久公開）        │
+              └──────────────────────────┘                                       │
+┌──────────────────────────── <span class="a">Plane B: Publish（公開・読み取りのみ）</span> ──────────│──────────┐
+│                                                                               ▼          │
+│   外部ユーザー ──► <span class="a">https://files.fracturelab.dev/&lt;key&gt;</span>   （恒久・CDN キャッシュ）        │
+│   外部ユーザー ──► <span class="g">https://…r2.cloudflarestorage.com/…?X-Amz-…</span>（時限 presigned）        │
+└──────────────────────────────────────────────────────────────────────────────────────────┘
+  </pre></div>
+
+  <h3>2.1 コンポーネント責務一覧</h3>
+  <table>
+    <tr><th style="width:200px">コンポーネント</th><th>責務</th><th style="width:180px">構成箇所</th></tr>
+    <tr><td class="mono">flab-stor-private</td><td>私有ストレージ本体。バックアップ・作業ファイル・共有前ファイルの置き場。外部から一切到達不可（presigned 除く）</td><td>§5.2</td></tr>
+    <tr><td class="mono">flab-stor-public</td><td>公開ストレージ。ここに置く＝公開する、の 1 対 1 対応</td><td>§5.2 / §7</td></tr>
+    <tr><td class="mono">rclone nfsmount ×2</td><td>各バケットをローカル NFS サーバとして提供し Finder にマウント。VFS キャッシュで書込みバッファリング</td><td>§6.2–6.3</td></tr>
+    <tr><td class="mono">launchd (2 plist)</td><td>ログイン時自動マウント・異常終了時再起動</td><td>§6.4</td></tr>
+    <tr><td class="mono">custom domain</td><td><code>files.fracturelab.dev</code> → public バケット。TLS・CDN キャッシュ・Cache Rules 適用点</td><td>§7.1</td></tr>
+    <tr><td class="mono">r2share (CLI)</td><td>presigned URL 発行・公開バケットへの発行付きコピーを行う zsh スクリプト</td><td>§8</td></tr>
+  </table>
+</section>
+
+<!-- ================= 03 ================= -->
+<section id="s3">
+  <div class="sec-key">r2://spec/03_decisions/</div>
+  <h2>03. 技術選定と決定事項</h2>
+  <p class="lead">実装エージェントは本節の決定 D-01〜D-07 を変更してはならない。比較根拠は監査可能性のために残す。</p>
+
+  <h3>3.1 D-01: Finder マウント方式 → <span class="tag adopt">rclone nfsmount</span></h3>
+  <table>
+    <tr><th>候補</th><th>仕組み</th><th>kext / 追加SW</th><th>評価</th><th class="c">判定</th></tr>
+    <tr>
+      <td><strong>rclone nfsmount</strong></td>
+      <td>rclone が localhost に NFS サーバを立て、macOS 内蔵 NFS クライアントでマウント</td>
+      <td class="c">不要</td>
+      <td>Apple Silicon でセキュリティ設定変更ゼロ。rclone 本体のみで完結。VFS キャッシュ全機能利用可</td>
+      <td class="c"><span class="tag adopt">採用</span></td>
+    </tr>
+    <tr>
+      <td>rclone mount + macFUSE</td>
+      <td>カーネル拡張(kext)による FUSE</td>
+      <td class="c">kext 要</td>
+      <td>Apple Silicon ではリカバリモードで「低セキュリティ+kext 許可」が必要。OS アップデート毎に壊れる前科多数</td>
+      <td class="c"><span class="tag reject">不採用</span></td>
+    </tr>
+    <tr>
+      <td>rclone mount + FUSE-T</td>
+      <td>ユーザ空間 FUSE（NFS/SMB/FSKit バックエンド）</td>
+      <td class="c">FUSE-T 要</td>
+      <td>kext 不要だが追加依存が 1 つ増える。NFS バックエンドには「Finder で見るだけで mtime が書き換わり再アップロードが走り得る」既知問題。FSKit バックエンドは macOS 26+ 限定で成熟待ち</td>
+      <td class="c"><span class="tag reject">不採用<br>(将来再評価)</span></td>
+    </tr>
+    <tr>
+      <td>Mountain Duck</td>
+      <td>商用 GUI（内部で FUSE-T 相当）</td>
+      <td class="c">購入 ($39)</td>
+      <td>GUI は快適だが、launchd/スクリプトによる自動化・キャッシュ挙動の厳密制御ができない。CLI 統一方針に反する</td>
+      <td class="c"><span class="tag reject">不採用</span></td>
+    </tr>
+    <tr>
+      <td>Cyberduck / Transmit</td>
+      <td>転送クライアント（マウントではない）</td>
+      <td class="c">—</td>
+      <td>「Finder に常設ドライブ」という要件を満たさない</td>
+      <td class="c"><span class="tag reject">対象外</span></td>
+    </tr>
+  </table>
+  <div class="box info"><div class="box-t">NOTE — 将来の乗り換え線</div>
+  macOS 26 以降で FSKit（Apple 純正のユーザ空間ファイルシステム基盤）対応が rclone / FUSE-T 側で安定した場合、nfsmount から <code>rclone mount -o backend=fskit</code> 系へ移行するとパフォーマンスと Finder 統合が向上する可能性がある。本設計はマウントコマンド 1 行の差し替えで移行可能な構造（§6.3 で mount コマンドを変数化）とする。</div>
+
+  <h3>3.2 D-02: バケット構成 → <span class="tag adopt">private / public の 2 バケット物理分離</span></h3>
+  <ul class="plain">
+    <li>R2 のカスタムドメイン公開・r2.dev 公開は<strong>バケット単位</strong>で有効化される。単一バケット + prefix 運用では「公開設定を入れた瞬間に全 prefix が公開」となり、誤公開の構造的リスクを持つ。</li>
+    <li>2 バケットなら「public バケットに入れたものだけが公開される」という<strong>物理的な保証</strong>になり、Finder 上でもドライブが分かれるため人為ミスが起きにくい。</li>
+    <li>デメリット（バケット間移動がサーバサイドコピー+削除になる）は §8 の <code>r2share pub</code> で吸収する。</li>
+  </ul>
+
+  <h3>3.3 D-03〜D-07: その他の決定</h3>
+  <table>
+    <tr><th style="width:70px">ID</th><th>決定事項</th><th>理由</th></tr>
+    <tr><td class="mono">D-03</td><td>恒久公開はカスタムドメイン <code>files.fracturelab.dev</code>。r2.dev は開発確認専用</td><td>r2.dev はレート制限ありで本番非推奨（Cloudflare 公式見解）。カスタムドメインは Cache Rules / WAF / アクセスログが使える</td></tr>
+    <tr><td class="mono">D-04</td><td>期限付き共有は presigned URL（S3 API ドメイン経由）</td><td>サーバ不要・即発行・失効自動。カスタムドメインでは使えない制約は許容（共有 URL の見た目より運用コストゼロを優先）</td></tr>
+    <tr><td class="mono">D-05</td><td>VFS キャッシュモードは <code>--vfs-cache-mode full</code></td><td>Finder / 各種アプリのランダム書込み・プレビュー生成に耐えるのは full のみ。writes 以下では動作しないアプリが多い</td></tr>
+    <tr><td class="mono">D-06</td><td>API トークンは「バケットスコープの Object Read &amp; Write」を Mac 用に 1 本。Admin 権限トークンは発行しない</td><td>Mac 側漏洩時の影響半径をオブジェクト操作のみに限定（バケット削除・公開設定変更は不可能にする）</td></tr>
+    <tr><td class="mono">D-07</td><td>location hint は APAC</td><td>利用者（東京）からの書込みレイテンシ最小化。R2 は自動配置だがヒントで初期配置を寄せる</td></tr>
+  </table>
+</section>
+
+<!-- ================= 04 ================= -->
+<section id="s4">
+  <div class="sec-key">r2://spec/04_format/</div>
+  <h2>04. フォーマット設計（バケット・キー・命名規約）</h2>
+  <p class="lead">「どんなフォーマットを形成すれば対応可能か」への回答。ここで定義する規約は Finder 上のフォルダ構造にそのまま写像される。</p>
+
+  <h3>4.1 バケット命名</h3>
+  <table>
+    <tr><th>バケット名</th><th>用途</th><th>公開設定</th><th>マウント先</th></tr>
+    <tr><td class="mono">flab-stor-private</td><td>私有領域（デフォルトの置き場）</td><td>なし（非公開）</td><td class="mono">~/R2/private</td></tr>
+    <tr><td class="mono">flab-stor-public</td><td>公開領域</td><td>custom domain 有効</td><td class="mono">~/R2/public</td></tr>
+  </table>
+  <p>命名規則: 小文字英数とハイフンのみ・3〜63 文字・作成後変更不可。<code>flab-</code> prefix は fracturelab 系リソースの共通 prefix として予約する。</p>
+
+  <h3>4.2 オブジェクトキー規約（必須ルール）</h3>
+  <table>
+    <tr><th style="width:70px">ID</th><th>ルール</th><th>理由</th></tr>
+    <tr><td class="mono">K-01</td><td>文字集合: <code>a-z 0-9 - _ . /</code> を推奨。日本語キーは private バケットのみ許容し、public バケットでは<strong>禁止</strong></td><td>公開 URL のエンコード事故・リンク切れ防止</td></tr>
+    <tr><td class="mono">K-02</td><td>Unicode 正規化は <strong>NFC</strong>。rclone 側は <code>--no-unicode-normalization=false</code>（デフォルト）を維持する</td><td>macOS は NFD を返すことがあり、正規化を切ると同名別ファイルが発生する</td></tr>
+    <tr><td class="mono">K-03</td><td>先頭 <code>/</code> 禁止・連続 <code>//</code> 禁止・末尾 <code>/</code> はディレクトリマーカーとして rclone に任せる（手動生成しない）</td><td>S3 系ストレージの疑似ディレクトリ仕様との整合</td></tr>
+    <tr><td class="mono">K-04</td><td><code>.DS_Store</code>, <code>._*</code>, <code>.Spotlight-V100</code>, <code>.Trashes</code> はバケットに保存しない（マウント側 exclude で強制、§6.3）</td><td>ノイズ抑制・Class A 操作課金の抑制</td></tr>
+    <tr><td class="mono">K-05</td><td>1 オブジェクト ≦ 300GB を上限とする（R2 の上限は約 5TB だが運用上限として設定）</td><td>マルチパート再送コストとキャッシュディスク圧迫の抑制</td></tr>
+  </table>
+
+  <h3>4.3 private バケット prefix レイアウト</h3>
+  <pre><code>flab-stor-private/
+├── inbox/                  <span class="cm"># 一時置き場。月次で整理（Obsidian 00_inbox と同思想）</span>
+├── vault-backup/           <span class="cm"># Obsidian vault 等のバックアップ</span>
+│   └── {YYYY-MM-DD}/       <span class="cm"># 日付スナップショット単位</span>
+├── projects/
+│   └── {project-slug}/     <span class="cm"># 例: partscraft/, living-character/</span>
+├── media-src/              <span class="cm"># 公開前の元素材（動画・PSD 等の重量級）</span>
+└── share-staging/          <span class="cm"># presigned 共有する前提のファイル置き場</span></code></pre>
+
+  <h3>4.4 public バケット prefix レイアウト（＝公開 URL 設計）</h3>
+  <pre><code>flab-stor-public/
+├── assets/{YYYY}/{slug}.{ext}     <span class="cm"># 汎用配布物 → files.fracturelab.dev/assets/2026/foo.zip</span>
+├── img/{YYYY}/{slug}.{ext}        <span class="cm"># 画像。ブログ・SNS 貼付用</span>
+├── releases/{product}/{semver}/   <span class="cm"># 例: releases/partscraft/0.3.0/partscraft-0.3.0.tgz</span>
+└── pub/                           <span class="cm"># その他雑多な公開物（原則ここに直置きしない）</span></code></pre>
+  <div class="box decide"><div class="box-t">RULE — 公開 URL の不変性</div>
+  public バケットに置いた key は<strong>公開後にリネーム・削除で URL を壊さない</strong>ことを原則とする。差し替えは同一 key への上書き（CDN キャッシュは §7.2 の Cache Rule に従い最大 1 時間で追従）。廃止時は削除ではなく <code>gone/</code> prefix へ移動し、四半期ごとに一括削除する。</div>
+</section>
+
+<!-- ================= 05 ================= -->
+<section id="s5">
+  <div class="sec-key">r2://spec/05_r2/</div>
+  <h2>05. R2 側構築仕様</h2>
+
+  <h3>5.1 前提: R2 有効化</h3>
+  <p>Cloudflare ダッシュボード → R2 Object Storage → 有効化（クレジットカード登録要。無料枠内なら請求 $0）。</p>
+
+  <h3>5.2 バケット作成（2 個）</h3>
+  <table>
+    <tr><th>設定項目</th><th class="mono">flab-stor-private</th><th class="mono">flab-stor-public</th></tr>
+    <tr><td>Location</td><td colspan="2" class="c">Provide a location hint → <strong>Asia-Pacific (APAC)</strong>（D-07）</td></tr>
+    <tr><td>Storage class</td><td colspan="2" class="c">Standard</td></tr>
+    <tr><td>Public access (r2.dev)</td><td class="c">無効のまま</td><td class="c">無効のまま（※確認時のみ一時有効化可。恒久運用禁止）</td></tr>
+    <tr><td>Custom domain</td><td class="c">設定しない</td><td class="c"><code>files.fracturelab.dev</code>（§7.1）</td></tr>
+    <tr><td>CORS</td><td class="c">不要</td><td class="c">§5.4 の JSON を設定</td></tr>
+  </table>
+
+  <h3>5.3 API トークン発行（Mac マウント用・D-06）</h3>
+  <p>R2 → Manage R2 API Tokens → Create API token:</p>
+  <table>
+    <tr><th>項目</th><th>値</th></tr>
+    <tr><td>Token name</td><td class="mono">mac-finder-mount</td></tr>
+    <tr><td>Permissions</td><td><strong>Object Read &amp; Write</strong></td></tr>
+    <tr><td>Specify bucket(s)</td><td class="mono">flab-stor-private, flab-stor-public の 2 つのみ</td></tr>
+    <tr><td>TTL</td><td>Forever（ローテーション運用は §9 SEC-04）</td></tr>
+  </table>
+  <p>発行時に表示される <strong>Access Key ID / Secret Access Key / S3 endpoint（<code class="mono">https://{{ACCOUNT_ID}}.r2.cloudflarestorage.com</code>）</strong>の 3 点を控える。Secret は再表示不可。保存先は macOS キーチェーンまたは 1Password とし、平文メモ・Obsidian vault への保存を禁止する。</p>
+
+  <h3>5.4 CORS ポリシー（public バケットのみ）</h3>
+  <p>ブラウザ上の自作ページ（例: x402explorer 等 fracturelab 配下サービス）から fetch する場合に必要。<code>&lt;img&gt;</code> / <code>&lt;a download&gt;</code> だけなら CORS 不要だが、将来の利用を見込み最初から設定する。</p>
+  <div class="file-label">R2 Dashboard → flab-stor-public → Settings → CORS Policy</div>
+  <pre><code>[
+  {
+    "AllowedOrigins": ["https://fracturelab.dev", "https://*.fracturelab.dev"],
+    "AllowedMethods": ["GET", "HEAD"],
+    "AllowedHeaders": ["Range"],
+    "ExposeHeaders": ["ETag", "Content-Length", "Content-Type"],
+    "MaxAgeSeconds": 86400
+  }
+]</code></pre>
+</section>
+
+<!-- ================= 06 ================= -->
+<section id="s6">
+  <div class="sec-key">r2://spec/06_mac/</div>
+  <h2>06. Mac 側構築仕様</h2>
+
+  <h3>6.1 インストール</h3>
+  <pre><code>brew install rclone
+rclone version   <span class="cm"># v1.68.0 以上であることを確認。満たさない場合 brew upgrade rclone</span>
+mkdir -p ~/R2/private ~/R2/public ~/Library/Logs/rclone</code></pre>
+
+  <h3>6.2 rclone リモート定義</h3>
+  <p><code>rclone config</code> の対話は使わず、設定ファイルを直接配置する（冪等・再現可能にするため）。Secret を direnv 等に置かず rclone.conf に書く場合、ファイル権限を 600 にする。</p>
+  <div class="file-label">~/.config/rclone/rclone.conf</div>
+  <pre><code>[r2]
+type = s3
+provider = Cloudflare
+access_key_id = <span class="hl">{{R2_ACCESS_KEY_ID}}</span>
+secret_access_key = <span class="hl">{{R2_SECRET_ACCESS_KEY}}</span>
+endpoint = https://<span class="hl">{{ACCOUNT_ID}}</span>.r2.cloudflarestorage.com
+acl = private
+no_check_bucket = true</code></pre>
+  <ul class="plain">
+    <li><code>no_check_bucket = true</code>: トークンにバケット作成権限がないため、rclone がバケット存在確認/作成を試みてエラーになるのを防ぐ。<strong>必須</strong>。</li>
+    <li>リモートは 1 定義で共用し、パスで <code>r2:flab-stor-private</code> / <code>r2:flab-stor-public</code> を切り替える。</li>
+    <li>疎通確認は<strong>バケット名を明示して</strong>行う。バケットスコープのトークン（D-06）ではアカウント全体の ListBuckets（<code>rclone lsd r2:</code>）が権限不足で失敗またはリスト欠落し得るため、<code>rclone lsd r2:</code> を疎通判定に使ってはならない。</li>
+  </ul>
+  <pre><code>chmod 600 ~/.config/rclone/rclone.conf
+rclone lsd r2:flab-stor-private   <span class="cm"># エラーなく終了すること（空バケットなら出力なしで正常）</span>
+rclone lsd r2:flab-stor-public    <span class="cm"># 同上</span>
+echo "hello" | rclone rcat r2:flab-stor-private/inbox/hello.txt
+rclone cat r2:flab-stor-private/inbox/hello.txt   <span class="cm"># "hello" が返ること</span>
+rclone deletefile r2:flab-stor-private/inbox/hello.txt   <span class="cm"># 後片付け（削除権限の確認を兼ねる）</span></code></pre>
+
+  <h3>6.3 マウントコマンド仕様（正式版）</h3>
+  <p>launchd から呼ぶ共通スクリプトとして配置する。<strong>フラグは以下を厳守</strong>（変更禁止。チューニングは §6.5 の許容範囲内のみ）。</p>
+  <div class="file-label">~/bin/r2-mount.sh（chmod +x）</div>
+  <pre><code>#!/bin/zsh
+# usage: r2-mount.sh {private|public}
+set -euo pipefail
+
+PLANE="${1:-}"
+if [[ "$PLANE" != "private" && "$PLANE" != "public" ]]; then
+  echo "usage: r2-mount.sh {private|public}" >&2
+  exit 2
+fi
+BUCKET="flab-stor-${PLANE}"
+MOUNTPOINT="$HOME/R2/${PLANE}"
+VOLNAME="R2-${PLANE}"
+
+mkdir -p "${MOUNTPOINT}"
+<span class="cm"># 前回異常終了で残った stale mount を掃除（マウント中なら解除してから再マウント）</span>
+if mount | grep -q " ${MOUNTPOINT} "; then
+  umount "${MOUNTPOINT}" 2>/dev/null || umount -f "${MOUNTPOINT}" 2>/dev/null || true
+  sleep 1
+fi
+
+<span class="cm"># --volname は nfsmount では無視される場合がある（無害なので付与したままとする）</span>
+exec /opt/homebrew/bin/rclone nfsmount "r2:${BUCKET}" "${MOUNTPOINT}" \
+  --volname "${VOLNAME}" \
+  --vfs-cache-mode full \
+  --vfs-cache-max-size 10G \
+  --vfs-cache-max-age 72h \
+  --vfs-write-back 15s \
+  --vfs-read-chunk-size 16M \
+  --vfs-read-chunk-size-limit 512M \
+  --dir-cache-time 60s \
+  --poll-interval 0 \
+  --attr-timeout 5s \
+  --transfers 8 \
+  --s3-chunk-size 64M \
+  --s3-upload-cutoff 128M \
+  --exclude ".DS_Store" \
+  --exclude "._*" \
+  --exclude ".Spotlight-V100/**" \
+  --exclude ".Trashes/**" \
+  --nfs-cache-handle-limit 1000000 \
+  --cache-dir "$HOME/Library/Caches/rclone/${PLANE}" \
+  --log-file "$HOME/Library/Logs/rclone/${PLANE}.log" \
+  --log-level INFO</code></pre>
+
+  <h4>フラグ根拠（実装エージェント向け注記）</h4>
+  <table>
+    <tr><th style="width:280px">フラグ</th><th>根拠</th></tr>
+    <tr><td class="mono">--vfs-cache-mode full</td><td>D-05。Finder のプレビュー生成・アプリのランダム I/O に必須。未指定だと nfsmount は実質読み取り専用相当の挙動になる</td></tr>
+    <tr><td class="mono">--vfs-write-back 15s</td><td>保存後 15 秒でアップロード開始。連続保存（エディタ等）の重複アップロードを吸収しつつ、公開反映の体感遅延を許容範囲に収める</td></tr>
+    <tr><td class="mono">--poll-interval 0</td><td>S3 系は変更通知ポーリング非対応のため明示的に無効化（警告ログ抑制）。外部変更の反映は dir-cache-time=60s に依存</td></tr>
+    <tr><td class="mono">--s3-chunk-size 64M / --s3-upload-cutoff 128M</td><td>128MB 超をマルチパート化。動画・zip 等の大物で再送単位を適正化。Class A 回数とメモリのバランス点</td></tr>
+    <tr><td class="mono">--exclude 群</td><td>K-04 の強制。Finder メタデータをバケットへ書かない</td></tr>
+    <tr><td class="mono">--vfs-cache-max-size 10G</td><td>ローカルディスク使用上限。超過時は LRU で追い出し</td></tr>
+  </table>
+
+  <h3>6.4 launchd 常駐化</h3>
+  <p>ログイン時に両プレーンを自動マウントし、プロセス死亡時に再起動する。<strong>launchd 配下では <code>--daemon</code> を付けない</strong>（フォアグラウンドで exec し launchd に監視させる。二重 fork すると KeepAlive が機能しない）。plist は private / public で 2 枚、差分は文字列 1 箇所のみ。</p>
+  <div class="file-label">~/Library/LaunchAgents/dev.fracturelab.r2mount.private.plist（public 版は "private" を全置換）</div>
+  <pre><code>&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+&lt;!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd"&gt;
+&lt;plist version="1.0"&gt;
+&lt;dict&gt;
+  &lt;key&gt;Label&lt;/key&gt;            &lt;string&gt;dev.fracturelab.r2mount.private&lt;/string&gt;
+  &lt;key&gt;ProgramArguments&lt;/key&gt;
+  &lt;array&gt;
+    &lt;string&gt;/Users/<span class="hl">{{MAC_USER}}</span>/bin/r2-mount.sh&lt;/string&gt;
+    &lt;string&gt;private&lt;/string&gt;
+  &lt;/array&gt;
+  &lt;key&gt;RunAtLoad&lt;/key&gt;        &lt;true/&gt;
+  &lt;key&gt;KeepAlive&lt;/key&gt;
+  &lt;dict&gt;
+    &lt;key&gt;SuccessfulExit&lt;/key&gt; &lt;false/&gt;   <span class="cm">&lt;!-- 異常終了時のみ再起動 --&gt;</span>
+  &lt;/dict&gt;
+  &lt;key&gt;ThrottleInterval&lt;/key&gt; &lt;integer&gt;10&lt;/integer&gt;
+  &lt;key&gt;StandardErrorPath&lt;/key&gt;
+    &lt;string&gt;/Users/<span class="hl">{{MAC_USER}}</span>/Library/Logs/rclone/private.launchd.err&lt;/string&gt;
+&lt;/dict&gt;
+&lt;/plist&gt;</code></pre>
+  <pre><code>launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/dev.fracturelab.r2mount.private.plist
+launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/dev.fracturelab.r2mount.public.plist
+<span class="cm"># 停止・アンマウントは:</span>
+launchctl bootout gui/$(id -u)/dev.fracturelab.r2mount.private
+umount ~/R2/private 2>/dev/null || true</code></pre>
+  <div class="box info"><div class="box-t">Finder サイドバー登録</div>
+  マウント後、Finder で <code>⌘⇧G → ~/R2</code> を開き、<code>private</code> / <code>public</code> をサイドバーへドラッグして固定する。ネットワークドライブとしてではなくローカルパス経由で常時見える状態が完成形。</div>
+
+  <div class="box warn"><div class="box-t">CAUTION — Finder の「取り出し」との関係</div>
+  Finder やコマンドで手動アンマウントすると rclone は<strong>正常終了（exit 0）</strong>するため、<code>KeepAlive.SuccessfulExit=false</code> の設定では自動再マウントされない（意図的な取り出しを尊重する設計）。再マウントは以下で行う:
+  <pre style="margin-bottom:0"><code>launchctl kickstart gui/$(id -u)/dev.fracturelab.r2mount.private</code></pre></div>
+
+  <h4>Finder メタデータ書込みの二重防御（推奨・一度だけ実行）</h4>
+  <p>§6.3 の <code>--exclude</code> はバケット側への保存を防ぐが、Finder が書込みを試行すること自体を止めるため、ネットワークボリュームへの <code>.DS_Store</code> 生成を OS 設定で無効化する:</p>
+  <pre><code>defaults write com.apple.desktopservices DSDontWriteNetworkStores -bool true
+<span class="cm"># 反映にはログアウト/再ログインが必要。exclude と併用する（どちらか一方に依存しない）</span></code></pre>
+
+  <h3>6.5 チューニング許容範囲</h3>
+  <p>実装後の実測に基づき、以下の範囲でのみ変更可: <code>vfs-cache-max-size</code> 5–50G / <code>vfs-write-back</code> 5–60s / <code>transfers</code> 4–16 / <code>dir-cache-time</code> <strong>60s–5m</strong>（§10 のコスト制約により 60s を下回る設定を禁止）。それ以外のフラグ変更は本設計書の改版を要する。</p>
+</section>
+
+<!-- ================= 07 ================= -->
+<section id="s7">
+  <div class="sec-key">r2://spec/07_publish/</div>
+  <h2>07. 外部公開レイヤ仕様</h2>
+
+  <h3>7.1 カスタムドメイン接続（恒久公開）</h3>
+  <ol style="margin-left:22px">
+    <li>R2 → <code>flab-stor-public</code> → Settings → <strong>Custom Domains → Connect Domain</strong></li>
+    <li><code>files.fracturelab.dev</code> を入力（ゾーンが同一 Cloudflare アカウントにあるため、CNAME・TLS 証明書は自動発行される）</li>
+    <li>Status が Active になったら <code>https://files.fracturelab.dev/&lt;key&gt;</code> で全オブジェクトが GET 可能</li>
+  </ol>
+  <div class="box warn"><div class="box-t">CAUTION</div>
+  カスタムドメイン接続後、public バケットは<strong>キーを知っていれば誰でも読める</strong>状態になる。ディレクトリリスティングは提供されない（key の総当たりは不可能だが、秘匿性はキーの推測困難性のみに依存する）。機微なファイルは絶対に public バケットへ置かない。これが D-02（物理分離）の存在理由である。</div>
+
+  <h3>7.2 Cache Rules（推奨設定）</h3>
+  <p>Cloudflare ダッシュボード → fracturelab.dev ゾーン → Caching → Cache Rules で 1 ルール作成:</p>
+  <table>
+    <tr><th>項目</th><th>値</th></tr>
+    <tr><td>Rule name</td><td class="mono">r2-files-cache</td></tr>
+    <tr><td>When</td><td class="mono">Hostname equals files.fracturelab.dev</td></tr>
+    <tr><td>Cache eligibility</td><td>Eligible for cache</td></tr>
+    <tr><td>Edge TTL</td><td>Override → <strong>1 hour</strong>（上書き反映の最大遅延 = 1h。即時反映したい場合はダッシュボードから該当 URL を Purge）</td></tr>
+    <tr><td>Browser TTL</td><td>Override → 4 hours</td></tr>
+  </table>
+  <p>不変アセット（<code>releases/</code> 配下等）はアップロード時にオブジェクトメタデータで長期キャッシュを付与できる: <code>rclone copyto --header-upload "Cache-Control: public, max-age=31536000, immutable" ...</code>（§8 の <code>r2share pub --immutable</code> が内部で付与）。</p>
+
+  <h3>7.3 presigned URL（期限付き共有）</h3>
+  <ul class="plain">
+    <li>発行: <code>rclone link "r2:flab-stor-private/&lt;key&gt;" --expire 24h</code>。rclone が SigV4 署名付き GET URL を返す。サーバ通信なしのローカル署名で即時発行。</li>
+    <li>有効期限上限: <strong>7 日（604800 秒）</strong>。それ以上の共有は public バケット経由とする。</li>
+    <li>制約: URL のホストは <code class="mono">{{ACCOUNT_ID}}.r2.cloudflarestorage.com</code> 固定。<strong>カスタムドメインでは presigned を使えない</strong>（R2 の仕様）。失効前の無効化は不可（無効化したい場合は対象キーをリネーム）。</li>
+  </ul>
+
+  <h3>7.4 （オプション / Phase 3+）Worker プロキシ拡張点</h3>
+  <p>「カスタムドメイン + 認証付き配信」「ダウンロード回数制限」「アクセスログの D1 記録」が必要になった場合のみ、<code>share.fracturelab.dev</code> に Hono + R2 binding の Worker を置く。本書では接続点のみ定義する:</p>
+  <table>
+    <tr><th>項目</th><th>仕様</th></tr>
+    <tr><td>ルート</td><td class="mono">GET /f/:token → D1 で token 照合 → R2 binding (flab-stor-private) から stream 返却</td></tr>
+    <tr><td>binding</td><td class="mono">wrangler.toml: [[r2_buckets]] binding="STOR" bucket_name="flab-stor-private"</td></tr>
+    <tr><td>token 発行</td><td>r2share CLI からの Workers API 呼び出し（別仕様書 FL-R2FS-DD-002 として起票）</td></tr>
+  </table>
+</section>
+
+<!-- ================= 08 ================= -->
+<section id="s8">
+  <div class="sec-key">r2://spec/08_cli/</div>
+  <h2>08. 共有 CLI（r2share）仕様</h2>
+  <p class="lead">日常操作を 1 コマンド化する zsh スクリプト。Finder 操作 + このコマンドだけで全ユースケースが完結する。</p>
+
+  <h3>8.1 コマンド仕様</h3>
+  <table>
+    <tr><th style="width:340px">コマンド</th><th>動作</th></tr>
+    <tr><td class="mono">r2share tmp &lt;file&gt; [--expire 24h]</td><td>ローカル or マウント上のファイルを <code>share-staging/{YYYYMMDD}/</code> へコピー（既に private バケット上ならコピー省略）し、presigned URL を発行してクリップボードへコピー・標準出力</td></tr>
+    <tr><td class="mono">r2share pub &lt;file&gt; [--prefix assets] [--immutable]</td><td>ファイルを <code>flab-stor-public/{prefix}/{YYYY}/{ファイル名をslug化}</code> へアップロードし、<code>https://files.fracturelab.dev/...</code> を出力・クリップボードへ。--immutable で Cache-Control: max-age=31536000,immutable を付与</td></tr>
+    <tr><td class="mono">r2share ls [prefix]</td><td><code>rclone lsf --format tsp</code> ラッパで public バケットの公開中一覧を表示</td></tr>
+    <tr><td class="mono">r2share gone &lt;key&gt;</td><td>public の key を <code>gone/{key}</code> へサーバサイド移動（URL 廃止手続き、§4.4 RULE 準拠）</td></tr>
+  </table>
+
+  <h3>8.2 実装要件</h3>
+  <ul class="plain">
+    <li>言語: zsh 単一ファイル <code>~/bin/r2share</code>。必須依存は rclone と <code>pbcopy</code>。任意依存として <code>exiftool</code>（画像メタデータ除去、§8.3。<code>brew install exiftool</code>）。</li>
+    <li>slug 化: 拡張子を除くファイル名を小文字化・空白→<code>-</code>・<code>[^a-z0-9._-]</code> 除去。<strong>拡張子も小文字化する</strong>（例: <code>Logo Final.PNG</code> → <code>logo-final.png</code>、T-12 と対応）。結果が空になった場合は <code>file-{unixtime}</code>。</li>
+    <li><code>--expire</code>: デフォルト <code>24h</code>。指定値が 7d（604800 秒）を超える場合は presigned の仕様上限超過としてエラー終了（exit 2）し、<code>r2share pub</code> の利用を促すメッセージを出す。</li>
+    <li>public 側で同名 key が既に存在する場合は確認プロンプト（<code>-f</code> で強制上書き）。<strong>無確認上書きの禁止</strong>。</li>
+    <li>すべてのサブコマンドは実行した rclone コマンドラインを <code>--verbose</code> 時に表示する（監査可能性）。</li>
+    <li>exit code: 成功 0 / 引数エラー 2 / <strong>前提ツール欠如（exiftool 未導入で除去対象画像を pub、§8.3）3</strong> / rclone 失敗はその exit code を透過。</li>
+  </ul>
+
+  <h3>8.3 画像メタデータ除去（r2share pub のみ・SEC-08 の実装）</h3>
+  <p>公開用画像には Exif（GPS 位置情報・撮影機材・シリアル番号等）が残留し得るため、<code>r2share pub</code> は以下を実施する:</p>
+  <ul class="plain">
+    <li>対象拡張子: <code>jpg jpeg png tiff heic webp</code>（大文字小文字不問）。対象外の拡張子は無加工でアップロード。</li>
+    <li>処理: 一時ディレクトリ（<code>mktemp -d</code>）にコピーした複製へ <code>exiftool -all= -tagsfromfile @ -Orientation -ICC_Profile:all -overwrite_original &lt;tmpfile&gt;</code> を適用し、<strong>複製をアップロードする（元ファイルは変更しない）</strong>。処理後に一時ディレクトリを削除。<code>-Orientation</code> と <code>-ICC_Profile:all</code> の復元指定は必須（省略すると回転情報・カラープロファイルまで剥がれ、公開画像が横倒し・色崩れで表示される）。GPS・撮影日時・機材情報はこの指定でも除去される。</li>
+    <li>exiftool の解決: <code>${R2SHARE_EXIFTOOL:-$(command -v exiftool)}</code> で行う（環境変数 <code>R2SHARE_EXIFTOOL</code> による差し替えを許可。T-16 のテスト容易性のため）。</li>
+    <li>exiftool 未インストール時: 対象拡張子であれば <strong>アップロードを中断して exit 3</strong> し、<code>brew install exiftool</code> または <code>--keep-exif</code> の指定を促すメッセージを出す（警告のみで続行しない。無自覚な位置情報公開を防ぐため）。</li>
+    <li><code>--keep-exif</code>: メタデータ除去をスキップする明示オプトアウト。指定時はその旨を出力に表示する。</li>
+    <li><code>r2share tmp</code>（presigned・時限・非公開バケット）ではメタデータ除去を行わない（受け渡し先で原本が必要なユースケースを想定）。</li>
+  </ul>
+</section>
+
+<!-- ================= 09 ================= -->
+<section id="s9">
+  <div class="sec-key">r2://spec/09_security/</div>
+  <h2>09. セキュリティ要件</h2>
+  <table>
+    <tr><th style="width:80px">ID</th><th style="width:80px">レベル</th><th>要件</th></tr>
+    <tr><td class="mono">SEC-01</td><td><span class="tag must">MUST</span></td><td>API トークンは Object Read &amp; Write・対象 2 バケット限定（D-06）。Admin 系トークンを Mac に保存しない</td></tr>
+    <tr><td class="mono">SEC-02</td><td><span class="tag must">MUST</span></td><td><code>rclone.conf</code> は権限 600。リポジトリ・vault・iCloud 同期対象ディレクトリに置かない</td></tr>
+    <tr><td class="mono">SEC-03</td><td><span class="tag must">MUST</span></td><td>個人情報・認証情報・顧客(Guzen)関連ファイルは public バケットに置かない。迷ったら private + presigned</td></tr>
+    <tr><td class="mono">SEC-04</td><td><span class="tag should">SHOULD</span></td><td>API トークンを年 1 回ローテーション（新規発行 → conf 差し替え → 旧トークン失効。SHOYA-ACTIONS に年次タスク登録）</td></tr>
+    <tr><td class="mono">SEC-05</td><td><span class="tag should">SHOULD</span></td><td>r2.dev サブドメインは検証後に必ず無効へ戻す。恒久有効化禁止（D-03）</td></tr>
+    <tr><td class="mono">SEC-06</td><td><span class="tag should">SHOULD</span></td><td>Cloudflare ゾーンの Security → WAF で <code>files.fracturelab.dev</code> への異常ダウンロード急増をアラート化（Notifications: HTTP requests spike）</td></tr>
+    <tr><td class="mono">SEC-07</td><td><span class="tag may">MAY</span></td><td>public バケットの月次棚卸し（r2share ls の出力を Obsidian に記録し、意図しない公開物がないか確認）</td></tr>
+    <tr><td class="mono">SEC-08</td><td><span class="tag must">MUST</span></td><td>public バケットへ画像を公開する際は Exif 等のメタデータ（GPS 位置情報・機材情報）を除去する。<code>r2share pub</code> 経由なら自動実施（§8.3）。<strong>Finder で public マウントへ画像を直置きする場合はこの保護が働かない</strong>ため、画像公開は原則 r2share pub 経由とし、直置きする場合は事前に <code>exiftool -all=</code> を手動適用する</td></tr>
+    <tr><td class="mono">SEC-09</td><td><span class="tag should">SHOULD</span></td><td>rclone nfsmount が localhost に立てる内蔵 NFS サーバは<strong>認証なし</strong>で待ち受ける（マウント自体は nodev,nosuid で行われる）。単一利用者の Mac では許容するが、複数人がログインし得る共有マシン・ゲストアカウント有効環境では本方式を使用しない。前提が変わる場合は本設計書の改版を要する</td></tr>
+  </table>
+</section>
+
+<!-- ================= 10 ================= -->
+<section id="s10">
+  <div class="sec-key">r2://spec/10_cost/</div>
+  <h2>10. コスト設計</h2>
+  <p>R2 の公表価格（Standard、確定値は実装時に公式 pricing ページで再確認すること）: ストレージ $0.015/GB-月、Class A（書込み系）$4.50/100万 req、Class B（読取り系）$0.36/100万 req、<strong>egress $0</strong>。無料枠: 10GB-月・Class A 100万・Class B 1000万/月。</p>
+  <table>
+    <tr><th>想定シナリオ</th><th>ストレージ</th><th>操作</th><th class="c">月額目安</th></tr>
+    <tr><td>ライト運用（無料枠内）</td><td>10GB 以下</td><td>日常の Finder 操作程度</td><td class="c"><strong>$0</strong></td></tr>
+    <tr><td>標準運用</td><td>100GB</td><td>Class A 20万 / Class B 100万</td><td class="c">粗計 $1.50 + $0.90 + $0.36 = $2.76 →<br>無料枠控除後 <strong>約 $1.35</strong>（ストレージ 90GB 分のみ課金。操作は両クラスとも無料枠内で $0）</td></tr>
+    <tr><td>配布ヘビー（動画 500GB 配布）</td><td>500GB</td><td>読取り中心</td><td class="c"><strong>約 $7.4</strong>（S3 なら egress だけで $45/TB かかる領域）</td></tr>
+  </table>
+  <div class="box warn"><div class="box-t">コスト注意点</div>
+  <ul class="plain">
+    <li>マウント上の<strong>リネーム/移動はサーバサイドコピー + 削除</strong>＝ Class A 消費。バケット内の大規模フォルダ整理は Finder ではなく <code>rclone moveto</code>（同じくコピーだがリトライ制御が効く）か、そもそも構造を §4 で固定して発生させない。</li>
+    <li><code>--dir-cache-time</code> を短くしすぎると LIST（Class A）が増える。60s 未満へ下げない。</li>
+  </ul></div>
+</section>
+
+<!-- ================= 11 ================= -->
+<section id="s11">
+  <div class="sec-key">r2://spec/11_roadmap/</div>
+  <h2>11. 実装ロードマップ</h2>
+  <p class="lead">各フェーズは受入基準（AC）を全て満たしてから次へ進む。P0→P2 は直列、P3 は P1 完了後いつでも着手可。</p>
+
+  <div class="phase-card">
+    <div class="phase-head"><span class="pn">P0</span><span class="pt">R2 基盤準備</span><span class="pd">est. 30min / 人間作業含む</span></div>
+    <div class="phase-body">
+      <table>
+        <tr><th style="width:70px">Task</th><th>内容</th><th style="width:90px">担当</th></tr>
+        <tr><td class="mono">P0-1</td><td>R2 有効化・2 バケット作成（§5.2）</td><td>人間</td></tr>
+        <tr><td class="mono">P0-2</td><td>API トークン発行・キーチェーン保存（§5.3）</td><td>人間</td></tr>
+        <tr><td class="mono">P0-3</td><td>public バケット CORS 設定（§5.4）</td><td>人間 or Chrome agent</td></tr>
+      </table>
+      <p><strong>AC:</strong> ダッシュボードで 2 バケットが APAC hint 付きで存在し、トークン 3 点セットが手元にある。</p>
+    </div>
+  </div>
+
+  <div class="phase-card">
+    <div class="phase-head"><span class="pn">P1</span><span class="pt">Finder マウント + 常駐化</span><span class="pd">est. 60min</span></div>
+    <div class="phase-body">
+      <table>
+        <tr><th style="width:70px">Task</th><th>内容</th><th style="width:90px">担当</th></tr>
+        <tr><td class="mono">P1-1</td><td>rclone 導入・rclone.conf 配置・疎通確認（§6.1–6.2）</td><td>agent</td></tr>
+        <tr><td class="mono">P1-2</td><td>r2-mount.sh 作成・手動マウントで動作確認（§6.3）</td><td>agent</td></tr>
+        <tr><td class="mono">P1-3</td><td>launchd plist ×2 配置・bootstrap・再ログイン確認（§6.4）</td><td>agent + 人間(再ログイン)</td></tr>
+      </table>
+      <p><strong>AC:</strong> テスト計画 T-01〜T-06（§12）全パス。ログイン直後に ~/R2/private・~/R2/public が自動マウントされ、Finder でコピー/削除/リネームが正常動作する。</p>
+    </div>
+  </div>
+
+  <div class="phase-card">
+    <div class="phase-head"><span class="pn">P2</span><span class="pt">外部公開レイヤ</span><span class="pd">est. 45min</span></div>
+    <div class="phase-body">
+      <table>
+        <tr><th style="width:70px">Task</th><th>内容</th><th style="width:90px">担当</th></tr>
+        <tr><td class="mono">P2-1</td><td>カスタムドメイン接続（§7.1）</td><td>人間 or Chrome agent</td></tr>
+        <tr><td class="mono">P2-2</td><td>Cache Rule 作成（§7.2）</td><td>人間 or Chrome agent</td></tr>
+        <tr><td class="mono">P2-3</td><td>presigned 発行の動作確認（§7.3）</td><td>agent</td></tr>
+      </table>
+      <p><strong>AC:</strong> T-07〜T-10 全パス。Finder の public ドライブへ画像を置くと <strong>30 秒以内</strong>（write-back 15s + 転送時間）に <code>https://files.fracturelab.dev/...</code> で外部（スマホ回線等）から取得できる。</p>
+    </div>
+  </div>
+
+  <div class="phase-card">
+    <div class="phase-head"><span class="pn">P3</span><span class="pt">r2share CLI + 運用整備</span><span class="pd">est. 60min</span></div>
+    <div class="phase-body">
+      <table>
+        <tr><th style="width:70px">Task</th><th>内容</th><th style="width:90px">担当</th></tr>
+        <tr><td class="mono">P3-1</td><td>r2share 実装（§8）+ T-11〜T-14</td><td>agent</td></tr>
+        <tr><td class="mono">P3-2</td><td>運用ノートを Obsidian <code>30_knowledge/dev/r2-finder-storage.md</code> に作成（コマンド早見・トラブルシュート・本書へのリンク）</td><td>agent</td></tr>
+        <tr><td class="mono">P3-3</td><td>SHOYA-ACTIONS へ年次トークンローテーション（SEC-04）と四半期 gone/ 掃除（§4.4）を登録</td><td>agent</td></tr>
+      </table>
+      <p><strong>AC:</strong> T-11〜T-16 全パス。<code>r2share pub</code> 実行から URL がクリップボードに入るまで 30 秒以内。</p>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 12 ================= -->
+<section id="s12">
+  <div class="sec-key">r2://spec/12_test/</div>
+  <h2>12. テスト計画</h2>
+  <table>
+    <tr><th style="width:70px">ID</th><th>手順</th><th>期待結果</th></tr>
+    <tr><td class="mono">T-01</td><td><code>rclone lsd r2:flab-stor-private</code> と <code>rclone lsd r2:flab-stor-public</code> を実行</td><td>両方ともエラーなく終了する（バケットスコープトークンのため <code>rclone lsd r2:</code> によるアカウント全体列挙は使用しない）</td></tr>
+    <tr><td class="mono">T-02</td><td>Finder で ~/R2/private に 1MB のファイルをコピー → 20 秒待機 → <code>rclone lsf r2:flab-stor-private</code></td><td>オブジェクトが存在し、サイズ一致</td></tr>
+    <tr><td class="mono">T-03</td><td>Finder 上でファイルをリネーム・サブフォルダへ移動・削除</td><td>各操作がバケットに反映される（削除は即時ではなく write-back 後）</td></tr>
+    <tr><td class="mono">T-04</td><td>500MB のファイルをコピー</td><td>マルチパートで完走。ログに multipart upload の記録。Finder がビーチボールにならない</td></tr>
+    <tr><td class="mono">T-05</td><td>日本語ファイル名「テスト 資料.pdf」を private へコピー → <code>rclone lsf</code> で確認</td><td>NFC 正規化された単一オブジェクトとして存在（重複や文字化けなし）</td></tr>
+    <tr><td class="mono">T-06</td><td>Mac 再起動（再ログイン）</td><td>操作なしで両マウントが復活。launchd err ログにエラーなし</td></tr>
+    <tr><td class="mono">T-07</td><td>public に <code>img/2026/test.png</code> を配置 → 30 秒後に別回線で <code>https://files.fracturelab.dev/img/2026/test.png</code></td><td>200 で画像取得。Content-Type: image/png</td></tr>
+    <tr><td class="mono">T-08</td><td>同 key を別画像で上書き → Cache Purge 実行</td><td>Purge 後は新画像が返る</td></tr>
+    <tr><td class="mono">T-09</td><td>private のファイルに対し <code>rclone link --expire 1m</code> → URL を取得し curl</td><td>200。61 秒後の再 curl は 403</td></tr>
+    <tr><td class="mono">T-10</td><td>存在しない key を <code>files.fracturelab.dev</code> で GET</td><td>404（バケット一覧等が漏れないこと）</td></tr>
+    <tr><td class="mono">T-11</td><td><code>r2share tmp ~/Desktop/a.pdf</code></td><td>presigned URL が出力され pbcopy 済み。curl で 200</td></tr>
+    <tr><td class="mono">T-12</td><td><code>r2share pub ~/Desktop/Logo Final.PNG --prefix img</code></td><td>key が <code>img/2026/logo-final.png</code> に slug 化され URL 出力</td></tr>
+    <tr><td class="mono">T-13</td><td>T-12 と同名で再実行（-f なし）</td><td>上書き確認プロンプトが出る</td></tr>
+    <tr><td class="mono">T-14</td><td><code>r2share gone img/2026/logo-final.png</code></td><td>公開 URL が 404 化し、<code>gone/img/2026/logo-final.png</code> が存在</td></tr>
+    <tr><td class="mono">T-15</td><td>任意の JPEG に GPS を付与（<code>exiftool -GPSLatitude=35.69 -GPSLatitudeRef=N -GPSLongitude=139.70 -GPSLongitudeRef=E test.jpg</code>）→ <code>r2share pub test.jpg --prefix img</code> → <code>curl -s &lt;公開URL&gt; | exiftool -a -G1 -</code> で検査</td><td>GPS・撮影日時・機材系タグが存在しない。Orientation と ICC プロファイルは保持。手元の元ファイル test.jpg の Exif は残っている（原本不変）</td></tr>
+    <tr><td class="mono">T-16</td><td><code>R2SHARE_EXIFTOOL=/nonexistent r2share pub test.jpg --prefix img</code>（exiftool 解決のみを欠如させる。PATH 全体の変更は rclone まで失敗しテストにならないため使用しない）</td><td>アップロードされず exit 3。exiftool 導入または --keep-exif を促すメッセージが表示される。バケットに新規オブジェクトが増えていない</td></tr>
+  </table>
+</section>
+
+<!-- ================= 13 ================= -->
+<section id="s13">
+  <div class="sec-key">r2://spec/13_risks/</div>
+  <h2>13. 既知の制約・リスクと対処</h2>
+  <table>
+    <tr><th style="width:70px">ID</th><th>事象</th><th>対処 / 設計上の織り込み</th></tr>
+    <tr><td class="mono">R-01</td><td><strong>空フォルダが消える</strong>。S3 系は空ディレクトリの概念がなく、dir cache 失効後に空フォルダは Finder から見えなくなる</td><td>仕様として受容。フォルダは中身と同時に作る運用。§4 のレイアウトを先に <code>rclone mkdir</code> ではなくファイル配置で形成する</td></tr>
+    <tr><td class="mono">R-02</td><td><strong>リネーム＝コピー+削除</strong>。大容量ファイルのリネームは時間と Class A を消費</td><td>公開後 key 不変ルール（§4.4）+ 命名を置く前に確定する運用</td></tr>
+    <tr><td class="mono">R-03</td><td>書込みは write-back（15s+転送時間）遅延で反映。書込み直後の Mac 強制電源断でキャッシュ中データが失われ得る</td><td>「保存＝即クラウド」ではないことを利用者が認識する。重要ファイルはメニューバーやログで転送完了を確認（<code>rclone rc vfs/stats</code> は将来拡張）</td></tr>
+    <tr><td class="mono">R-04</td><td>複数マシンからの同一ファイル同時編集で後勝ち上書き（ロックなし）</td><td>単一利用者・実質単一編集端末の前提。同時編集用途には使わない</td></tr>
+    <tr><td class="mono">R-05</td><td>presigned URL はカスタムドメイン不可・発行後の失効操作不可</td><td>D-04 で許容。無効化したい場合は key をリネーム（旧 URL は 404 化）</td></tr>
+    <tr><td class="mono">R-06</td><td>オフライン時はキャッシュ済みファイルの読取りのみ可。新規書込みはキャッシュに溜まり復帰後に転送されるが、長期オフラインは非サポート</td><td>常時接続前提（§1.3）。モバイル運用は想定外</td></tr>
+    <tr><td class="mono">R-07</td><td>スパースバンドル/Time Machine/Photos ライブラリ等、数万小ファイル+ランダム I/O 用途は性能・課金とも不適</td><td>スコープ外（§1.2）。バックアップは tar/zip 化した単位で <code>vault-backup/</code> へ</td></tr>
+    <tr><td class="mono">R-08</td><td>rclone / macOS メジャーアップデートでマウント挙動が変わる可能性</td><td>brew upgrade 後は T-02/T-03/T-06 を再実行してから常用する。FSKit 移行線は §3.1 NOTE</td></tr>
+    <tr><td class="mono">R-09</td><td>r2.dev を有効化したまま忘れると想定外経路で公開が続く</td><td>SEC-05。検証後即無効化をテスト手順に組み込み済み（T-07 はカスタムドメインのみで実施）</td></tr>
+    <tr><td class="mono">R-10</td><td><code>--exclude</code> 対象名（<code>.DS_Store</code> 等）への書込みが VFS 上で拒否され、Finder に散発的な権限エラーとして表示され得る</td><td>§6.4 の <code>DSDontWriteNetworkStores</code> で書込み試行自体を抑止（二重防御）。それでもエラーが頻発する場合のみ exclude を外し、月次で <code>rclone delete --include ".DS_Store" --include "._*"</code> による掃除運用へ切り替える（設計書改版事項）</td></tr>
+  </table>
+</section>
+
+<!-- ================= 14 ================= -->
+<section id="s14">
+  <div class="sec-key">r2://spec/14_appendix/</div>
+  <h2>14. プレースホルダ一覧・用語・参照</h2>
+
+  <h3>14.1 プレースホルダ（実装時に置換する変数はこの 4 つのみ）</h3>
+  <table>
+    <tr><th>変数</th><th>内容</th><th>取得元</th></tr>
+    <tr><td class="mono">{{ACCOUNT_ID}}</td><td>Cloudflare アカウント ID（32 桁 hex）</td><td>ダッシュボード右サイド / R2 API ページ</td></tr>
+    <tr><td class="mono">{{R2_ACCESS_KEY_ID}}</td><td>P0-2 で発行した Access Key ID</td><td>トークン発行画面（1 回のみ表示）</td></tr>
+    <tr><td class="mono">{{R2_SECRET_ACCESS_KEY}}</td><td>同 Secret Access Key</td><td>同上</td></tr>
+    <tr><td class="mono">{{MAC_USER}}</td><td>macOS のユーザー名（<code>whoami</code>）</td><td>ローカル</td></tr>
+  </table>
+  <p>バケット名・ドメイン・マウントパス・launchd Label は本書で確定済みの固定値であり、プレースホルダではない。変更する場合は本書の改版（v1.1）を先に行うこと。</p>
+
+  <h3>14.2 用語</h3>
+  <table>
+    <tr><th style="width:180px">用語</th><th>定義</th></tr>
+    <tr><td>nfsmount</td><td>rclone がローカルに NFS サーバを起動し OS 標準 NFS クライアントでマウントする方式。FUSE 系ドライバ不要</td></tr>
+    <tr><td>VFS full cache</td><td>rclone の仮想 FS がファイル全体をローカルにキャッシュし、ランダム読み書きを吸収してから遅延アップロードするモード</td></tr>
+    <tr><td>presigned URL</td><td>SigV4 署名を埋め込んだ時限付き URL。署名はローカル計算のみで生成される</td></tr>
+    <tr><td>Class A / B</td><td>R2 の操作課金区分。A=PUT/LIST/COPY 等の変更系、B=GET/HEAD 等の読取り系</td></tr>
+    <tr><td>kext</td><td>macOS カーネル拡張。Apple Silicon ではセキュリティポリシー緩和が必要で、本設計では全面回避</td></tr>
+  </table>
+
+  <h3>14.3 参照（実装時に一次情報を再確認すべき URL）</h3>
+  <ul class="plain">
+    <li>rclone nfsmount リファレンス — rclone.org/commands/rclone_nfsmount/</li>
+    <li>rclone S3 (Cloudflare R2 provider) — rclone.org/s3/#cloudflare-r2</li>
+    <li>R2 Public buckets / Custom domains — developers.cloudflare.com/r2/buckets/public-buckets/</li>
+    <li>R2 Presigned URLs — developers.cloudflare.com/r2/api/s3/presigned-urls/</li>
+    <li>R2 Pricing — developers.cloudflare.com/r2/pricing/（§10 の単価は実装時に必ず再確認）</li>
+    <li>参考記事: 「Cloudflare R2をMacOSのFinderから見られるようにしてみた」— blog.sh1ma.dev/articles/20260710_1_cloudflare_r2_macos_finder/（nfsmount 実践・.DS_Store 対策・公開メディアのメタデータ除去工程の出典。v1.2 レビューで突合済み）</li>
+  </ul>
+
+  <h3>14.4 セルフレビュー記録（v1.0 → v1.4）</h3>
+  <p>実装委譲前の自己レビューで検出・修正した項目。実装エージェントは本記録の再修正を行わないこと（修正は反映済み）。</p>
+  <table>
+    <tr><th style="width:70px">ID</th><th style="width:80px">重要度</th><th>指摘内容</th><th>修正箇所</th></tr>
+    <tr><td class="mono">F-01</td><td><span class="tag must">重大</span></td><td>疎通確認とT-01が <code>rclone lsd r2:</code>（ListBuckets）を使用していたが、バケットスコープトークン（D-06）では権限不足で失敗し得る。実装エージェントが「トークン不良」と誤診断する導線だった</td><td class="mono">§6.2 / T-01</td></tr>
+    <tr><td class="mono">F-02</td><td><span class="tag should">矛盾</span></td><td>§6.5 のチューニング範囲（dir-cache-time 下限 15s）が §10 の「60s 未満禁止」と矛盾</td><td class="mono">§6.5</td></tr>
+    <tr><td class="mono">F-03</td><td><span class="tag should">矛盾</span></td><td>P2 受入基準「~15秒」と T-07「30秒」の反映時間が不一致</td><td class="mono">§11 P2</td></tr>
+    <tr><td class="mono">F-04</td><td><span class="tag should">堅牢性</span></td><td>r2-mount.sh に引数検証・マウントポイント作成・stale mount 掃除がなく、異常終了後の launchd 再起動がループし得た</td><td class="mono">§6.3</td></tr>
+    <tr><td class="mono">F-05</td><td><span class="tag should">欠落</span></td><td>Finder で「取り出し」た場合 rclone は exit 0 となり KeepAlive 設定では再マウントされない。復帰手順が未定義だった</td><td class="mono">§6.4</td></tr>
+    <tr><td class="mono">F-06</td><td><span class="tag may">予防</span></td><td>.DS_Store 対策が exclude 単独依存。OS 側抑止（DSDontWriteNetworkStores）を二重防御として追加。exclude 起因の Finder エラー可能性を R-10 として明文化</td><td class="mono">§6.4 / §13 R-10</td></tr>
+    <tr><td class="mono">F-07</td><td><span class="tag may">曖昧</span></td><td>r2share の slug 規約に拡張子の小文字化が未記載（T-12 の期待結果と非対応）。--expire のデフォルト値と 7d 上限時の挙動が未定義</td><td class="mono">§8.2</td></tr>
+    <tr><td class="mono">F-08</td><td><span class="tag may">注記</span></td><td>--volname が nfsmount で無視される場合がある旨をスクリプト内コメントに追記（挙動差異での混乱防止）</td><td class="mono">§6.3</td></tr>
+    <tr><td class="mono">F-09</td><td><span class="tag may">追加</span></td><td>疎通確認にテストオブジェクトの削除（deletefile）を追加し、削除権限の検証を兼ねる構成に変更</td><td class="mono">§6.2</td></tr>
+    <tr><td class="mono">F-10</td><td><span class="tag must">重大</span></td><td><strong>（外部記事レビュー）</strong>公開画像の Exif（GPS 位置情報等）除去が未規定。Finder ドラッグだけで公開できる本システムでは、従来の手動公開フローに存在した「メタデータ除去」工程が構造的に省略され、位置情報の無自覚な公開経路になっていた</td><td class="mono">§8.3 / SEC-08 / T-15, T-16</td></tr>
+    <tr><td class="mono">F-11</td><td><span class="tag should">欠落</span></td><td><strong>（外部記事レビュー）</strong>nfsmount の内蔵 NFS サーバが localhost 上で認証なしに待ち受ける特性が未記載。単一利用者前提の適用条件として明文化</td><td class="mono">SEC-09</td></tr>
+    <tr><td class="mono">F-12</td><td><span class="tag may">追記</span></td><td>突合元記事を参照節へ追加。記事のその他の項目（kext/SIP 回避・vfs-cache-mode・.DS_Store/AppleDouble 対策・認証情報管理・ログ配置）は v1.1 時点で充足済みであることを確認</td><td class="mono">§14.3</td></tr>
+    <tr><td class="mono">F-13</td><td><span class="tag must">重大</span></td><td>コスト表「標準運用」で無料枠控除前後の数値が混在（ストレージのみ控除後 $1.35 を使いつつ「控除前粗計」と誤記、合計「$1.5 前後」も誤り）。正: 粗計 $2.76 / 控除後 約 $1.35（操作費は両クラス無料枠内）。ヘッダの「$1.35/月」とも整合化</td><td class="mono">§10</td></tr>
+    <tr><td class="mono">F-14</td><td><span class="tag should">矛盾</span></td><td>§8.3 が導入した exit 3 が §8.2 の exit code 一覧に未記載</td><td class="mono">§8.2</td></tr>
+    <tr><td class="mono">F-15</td><td><span class="tag should">欠陥</span></td><td>T-16 の手順（PATH=/usr/bin）では rclone・r2share 自体が解決できず exiftool 欠如のテストにならない。<code>R2SHARE_EXIFTOOL</code> 環境変数による差し替え仕様を §8.3 に追加し、テスト手順を修正。T-15 も GPS 付与・検査コマンドを実行可能な形に具体化</td><td class="mono">§8.3 / T-15, T-16</td></tr>
+    <tr><td class="mono">F-16</td><td><span class="tag should">品質</span></td><td><code>exiftool -all=</code> 単独では Orientation・ICC プロファイルまで剥がれ、公開画像が横倒し・色崩れになる。<code>-tagsfromfile @ -Orientation -ICC_Profile:all</code> の復元指定を必須化</td><td class="mono">§8.3</td></tr>
+    <tr><td class="mono">F-17</td><td><span class="tag may">整合</span></td><td>§00 結論（TL;DR）に v1.2 の SEC-08（Exif 自動除去）が未反映だったため追記</td><td class="mono">§00</td></tr>
+    <tr><td class="mono">F-18</td><td><span class="tag may">集約</span></td><td><strong>（第 3 回・外部監修 codex / grok による認識合わせレビュー）</strong>新規の設計欠陥・矛盾は検出されず（v1.3 は技術的に成立しない箇所なし）。両モデルが揃って「実装者が見落としやすい既述前提」として指摘した 6 点（public の秘匿性ゼロ・key 不変 / gone 運用、画像直置き時の Exif 未除去、write-back による保存≠即同期、単一利用者 / 常時接続前提、疎通確認に <code>rclone lsd r2:</code> を使わない、変更境界＝プレースホルダ 4 つ）と再マウント挙動の注記を、着手前に読む要点として §0.5 に集約新設</td><td class="mono">§0.5（新設）</td></tr>
+  </table>
+
+  <h3>14.5 改版履歴</h3>
+  <table>
+    <tr><th style="width:80px">Ver</th><th style="width:120px">Date</th><th>変更内容</th></tr>
+    <tr><td class="mono">1.0</td><td class="mono">2026-07-13</td><td>初版。D-01〜D-07 確定、P0〜P3 ロードマップ・T-01〜T-14 テスト計画を定義</td></tr>
+    <tr><td class="mono">1.1</td><td class="mono">2026-07-13</td><td>セルフレビュー反映（F-01〜F-09）。疎通確認手順の修正、mount スクリプト堅牢化、eject 復帰手順、DSDontWriteNetworkStores、R-10 追加、§6.5/§10・P2/T-07 の整合化</td></tr>
+    <tr><td class="mono">1.2</td><td class="mono">2026-07-13</td><td>外部記事（blog.sh1ma.dev 2026-07-10）とのセキュリティ突合（F-10〜F-12）。§8.3 画像メタデータ除去の新設、SEC-08/SEC-09 追加、T-15/T-16 追加、P3 AC 更新</td></tr>
+    <tr><td class="mono">1.3</td><td class="mono">2026-07-13</td><td>第 2 回セルフレビュー（F-13〜F-17）。コスト表の無料枠計算修正、exit 3 の整合、T-15/T-16 手順の実行可能化、Exif 除去コマンドの Orientation/ICC 保持指定、§00 への SEC-08 反映</td></tr>
+    <tr><td class="mono">1.4</td><td class="mono">2026-07-18</td><td>第 3 回レビュー（外部監修 codex / grok による認識合わせ・F-18）。<strong>新規の設計変更なし</strong>。実装者が見落としやすい既述前提 6 点＋再マウント挙動を §0.5「実装前・認識合わせ確定事項」として集約新設。ヘッダ VER/DATE・title 更新</td></tr>
+  </table>
+</section>
+
+<footer>
+  <span>FL-R2FS-DD-001 v1.4 — fracturelab.dev internal spec</span>
+  <span>r2://fracturelab/specs/FL-R2FS-DD-001/#eof</span>
+</footer>
+
+</div>
+</body>
+</html>

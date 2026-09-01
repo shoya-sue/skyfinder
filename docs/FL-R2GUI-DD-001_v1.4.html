@@ -1,0 +1,2531 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FL-R2GUI-DD-001 — SkyFolder — R2 × Finder マウント＆共有 GUI 詳細設計書 v1.4</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+JP:wght@400;500;600;700&family=IBM+Plex+Mono:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#F4F6F7;
+  --panel:#FFFFFF;
+  --ink:#16232B;
+  --ink-soft:#4A5A64;
+  --line:#D8DFE3;
+  --line-strong:#B7C2C9;
+  --accent:#E8710A;        /* R2 orange (subject-grounded) */
+  --accent-deep:#B45309;
+  --steel:#2E5E7E;         /* mount / Mac plane */
+  --steel-bg:#EAF1F6;
+  --ok:#1E7F4F;
+  --warn:#B4540A;
+  --danger:#B3261E;
+  --code-bg:#101A20;
+  --code-ink:#DCE7EC;
+  --code-accent:#F5A35C;
+  --mono:'IBM Plex Mono',ui-monospace,Menlo,monospace;
+  --sans:'IBM Plex Sans JP',system-ui,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--paper);color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.85;padding-bottom:120px}
+.wrap{max-width:980px;margin:0 auto;padding:0 28px}
+
+/* ============ header ============ */
+header{border-bottom:3px solid var(--ink);background:var(--panel)}
+.doc-strip{display:flex;flex-wrap:wrap;gap:0;border-bottom:1px solid var(--line);font-family:var(--mono);font-size:11.5px}
+.doc-strip span{padding:8px 16px;border-right:1px solid var(--line);color:var(--ink-soft)}
+.doc-strip b{color:var(--ink);font-weight:600}
+.hero{padding:44px 0 36px}
+.hero .key{font-family:var(--mono);font-size:13px;color:var(--accent-deep);letter-spacing:.04em;margin-bottom:14px}
+.hero h1{font-size:29px;font-weight:700;line-height:1.45;letter-spacing:.01em}
+.hero h1 em{font-style:normal;color:var(--accent);border-bottom:4px solid var(--accent)}
+.hero p.sub{margin-top:16px;color:var(--ink-soft);font-size:14.5px;max-width:760px}
+.meta-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);margin-top:28px}
+.meta-grid div{background:var(--panel);padding:10px 14px}
+.meta-grid .k{font-family:var(--mono);font-size:10.5px;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.08em}
+.meta-grid .v{font-size:13.5px;font-weight:600;margin-top:2px}
+
+/* ============ TOC ============ */
+nav.toc{background:var(--panel);border:1px solid var(--line);border-top:3px solid var(--steel);margin:36px 0;padding:22px 26px}
+nav.toc h2{font-family:var(--mono);font-size:12px;letter-spacing:.1em;color:var(--steel);margin-bottom:12px}
+nav.toc ol{list-style:none;columns:2;column-gap:40px}
+nav.toc li{margin:5px 0;font-size:13.5px;break-inside:avoid}
+nav.toc a{color:var(--ink);text-decoration:none;border-bottom:1px dotted var(--line-strong)}
+nav.toc a:hover{color:var(--accent-deep);border-color:var(--accent)}
+nav.toc .n{font-family:var(--mono);font-size:11.5px;color:var(--ink-soft);margin-right:8px}
+
+/* ============ sections — object-key breadcrumb signature ============ */
+section{margin-top:64px}
+.sec-key{font-family:var(--mono);font-size:12px;color:var(--accent-deep);background:linear-gradient(90deg,#FDEEDD 0,#FDEEDD 100%);display:inline-block;padding:3px 12px;border-left:3px solid var(--accent)}
+section>h2{font-size:22px;font-weight:700;margin:12px 0 6px;letter-spacing:.01em}
+section>p.lead{color:var(--ink-soft);font-size:14px;margin-bottom:18px;max-width:820px}
+h3{font-size:16.5px;font-weight:700;margin:34px 0 10px;padding-left:12px;border-left:4px solid var(--steel)}
+h4{font-size:14.5px;font-weight:700;margin:24px 0 8px;color:var(--steel)}
+p{margin:10px 0;max-width:860px}
+ul.plain{margin:8px 0 8px 22px}
+ul.plain li{margin:5px 0}
+strong{font-weight:700}
+
+/* ============ tables ============ */
+table{width:100%;border-collapse:collapse;margin:16px 0;background:var(--panel);font-size:13.5px}
+th{background:var(--ink);color:#fff;text-align:left;padding:9px 12px;font-weight:600;font-size:12.5px;letter-spacing:.03em}
+td{border:1px solid var(--line);padding:9px 12px;vertical-align:top}
+tr:nth-child(even) td{background:#FAFBFC}
+td.mono, .mono{font-family:var(--mono);font-size:12.5px}
+td.c{text-align:center}
+.tag{display:inline-block;font-family:var(--mono);font-size:10.5px;font-weight:600;padding:1px 8px;border-radius:2px;letter-spacing:.04em}
+.tag.must{background:#FBE9E7;color:var(--danger);border:1px solid #E8B3AF}
+.tag.should{background:#FFF3E0;color:var(--warn);border:1px solid #EFC9A0}
+.tag.may{background:#E8F0E9;color:var(--ok);border:1px solid #BAD6C3}
+.tag.adopt{background:var(--accent);color:#fff}
+.tag.reject{background:#EDF0F2;color:var(--ink-soft);border:1px solid var(--line-strong)}
+.tag.phase{background:var(--steel);color:#fff}
+
+/* ============ code ============ */
+pre{background:var(--code-bg);color:var(--code-ink);font-family:var(--mono);font-size:12.5px;line-height:1.75;padding:18px 20px;overflow-x:auto;margin:14px 0;border-left:4px solid var(--accent)}
+pre .cm{color:#7E9AA8}
+pre .hl{color:var(--code-accent)}
+code{font-family:var(--mono);font-size:.92em;background:#E9EEF1;padding:1px 6px;border-radius:2px;color:#1F3540}
+pre code{background:none;padding:0;color:inherit}
+.file-label{font-family:var(--mono);font-size:11px;color:#fff;background:var(--ink);display:inline-block;padding:3px 12px;margin-bottom:-14px;position:relative;z-index:1}
+
+/* ============ callouts ============ */
+.box{border:1px solid var(--line);background:var(--panel);padding:16px 20px;margin:16px 0}
+.box.decide{border-left:5px solid var(--accent)}
+.box.warn{border-left:5px solid var(--warn);background:#FFF9F2}
+.box.danger{border-left:5px solid var(--danger);background:#FDF4F3}
+.box.info{border-left:5px solid var(--steel);background:var(--steel-bg)}
+.box .box-t{font-family:var(--mono);font-size:11px;font-weight:600;letter-spacing:.08em;margin-bottom:6px}
+.box.decide .box-t{color:var(--accent-deep)}
+.box.warn .box-t{color:var(--warn)}
+.box.danger .box-t{color:var(--danger)}
+.box.info .box-t{color:var(--steel)}
+
+/* ============ conclusion panel ============ */
+.conclusion{background:var(--ink);color:#EAF0F3;padding:30px 32px;margin:36px 0;border-top:5px solid var(--accent)}
+.conclusion h2{font-size:17px;color:#fff;margin-bottom:14px;font-family:var(--mono);letter-spacing:.06em}
+.conclusion ol{margin-left:22px}
+.conclusion li{margin:9px 0;line-height:1.8}
+.conclusion b{color:var(--code-accent)}
+.conclusion code{background:#22333D;color:#F0C9A0}
+
+/* ============ architecture diagram ============ */
+.arch{background:var(--panel);border:1px solid var(--line);padding:26px;margin:20px 0;overflow-x:auto}
+.arch pre{background:none;color:var(--ink);border:none;padding:0;font-size:12px;line-height:1.6}
+.arch .a{color:var(--accent-deep);font-weight:600}
+.arch .s{color:var(--steel);font-weight:600}
+.arch .g{color:var(--ink-soft)}
+
+/* ============ phase cards ============ */
+.phase-card{border:1px solid var(--line);background:var(--panel);margin:18px 0}
+.phase-head{display:flex;align-items:baseline;gap:14px;padding:14px 20px;border-bottom:1px solid var(--line);background:linear-gradient(90deg,var(--steel-bg),var(--panel))}
+.phase-head .pn{font-family:var(--mono);font-weight:600;font-size:13px;color:#fff;background:var(--steel);padding:2px 12px}
+.phase-head .pt{font-weight:700;font-size:15.5px}
+.phase-head .pd{margin-left:auto;font-family:var(--mono);font-size:12px;color:var(--ink-soft)}
+.phase-body{padding:6px 20px 18px}
+
+footer{margin-top:80px;border-top:3px solid var(--ink);padding-top:18px;font-family:var(--mono);font-size:11.5px;color:var(--ink-soft);display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px}
+@media(max-width:720px){nav.toc ol{columns:1}.hero h1{font-size:23px}}
+@media print{body{padding-bottom:0}pre{white-space:pre-wrap}}
+
+/* ============ v1.0 additions — GUI spec ============ */
+.tag.new{background:#1E7F4F;color:#fff}
+.tag.inherit{background:var(--steel-bg);color:var(--steel);border:1px solid #B6CBD9}
+.tag.change{background:#FDEEDD;color:var(--accent-deep);border:1px solid #EFC9A0}
+.wire{background:var(--panel);border:1px solid var(--line);padding:22px;margin:18px 0;overflow-x:auto}
+.wire pre{background:none;color:var(--ink);border:none;padding:0;font-size:12px;line-height:1.55}
+.wire .lbl{font-family:var(--mono);font-size:11px;color:#fff;background:var(--steel);display:inline-block;padding:2px 10px;margin-bottom:10px}
+.wire .a{color:var(--accent-deep);font-weight:600}
+.wire .g{color:var(--ink-soft)}
+.api{font-family:var(--mono);font-size:12px;background:#22333D;color:#F0C9A0;padding:1px 7px;border-radius:2px;white-space:nowrap}
+.unverified{border-left:5px solid #8A6FBF;background:#F5F1FB}
+.unverified .box-t{color:#5B3F94}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <div class="doc-strip" style="margin:0 -28px">
+      <span>DOC ID <b>FL-R2GUI-DD-001</b></span>
+      <span>VER <b>1.4</b></span>
+      <span>DATE <b>2026-08-31</b></span>
+      <span>STATUS <b>Implemented — Verified against implementation</b></span>
+      <span>AUTHOR <b>shoya-sue / fracturelab.dev</b></span>
+      <span>SUPERSEDES <b>—（FL-R2FS-DD-001 v1.4 を継承）</b></span>
+    </div>
+    <div class="hero">
+      <div class="key">r2://fracturelab/specs/FL-R2GUI-DD-001/</div>
+      <h1><em>SkyFolder</em><br>Cloudflare R2 × macOS Finder マウント＆共有 GUI 詳細設計書</h1>
+      <p class="sub">
+        <b>SkyFolder</b> は、接続情報をアプリ画面に入力するだけで任意の R2 バケットを Finder にマウントし、
+        マウント済みファイルから恒久公開 URL・期限付き共有 URL をワンクリックで発行できる
+        macOS ネイティブ GUI アプリケーションの詳細設計。
+        <b>FL-R2FS-DD-001 v1.4</b>（CLI 版・単一構成固定）が確立した技術基盤を継承しつつ、
+        <b>設定の汎用化</b>と<b>操作面の GUI 化</b>という 2 点でスコープを拡張する。
+      </p>
+      <div class="meta-grid">
+        <div><div class="k">Product</div><div class="v">SkyFolder</div></div>
+        <div><div class="k">Bundle ID</div><div class="v">dev.fracturelab.skyfolder</div></div>
+        <div><div class="k">GUI Stack</div><div class="v">SwiftUI / macOS native</div></div>
+        <div><div class="k">Backend</div><div class="v">rclone rcd（HTTP RC API）</div></div>
+        <div><div class="k">Mount</div><div class="v">nfsmount（kext 不要）</div></div>
+        <div><div class="k">Target OS</div><div class="v">macOS 14+ / Apple Silicon</div></div>
+        <div><div class="k">Distribution</div><div class="v">Developer ID 署名 .app</div></div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+
+<div class="conclusion">
+  <h2>§00 結論（TL;DR）</h2>
+  <ol>
+    <li><b>GUI スタックは SwiftUI ネイティブ（G-01）。</b> 本ツールの価値の中心は「Finder にマウントされること」で、これは macOS 固有機能である。クロスプラットフォーム framework の利点が原理的に発生しない一方、<code>MenuBarExtra</code>・Keychain・<code>NSWorkspace</code>・<code>UserNotifications</code> がファーストパーティ API として使えるため、常駐型メニューバーアプリとして最短距離になる。</li>
+    <li><b>rclone は「その都度 spawn」ではなく <code>rclone rcd</code> を常駐させ HTTP RC API で制御する（G-02）。</b> <span class="api">mount/mount</span> <span class="api">mount/unmount</span> <span class="api">mount/listmounts</span> <span class="api">operations/publiclink</span> <span class="api">core/stats</span> <span class="api">vfs/stats</span> が公式 API として揃っており、マウント制御・共有 URL 発行・転送進捗表示が単一の口で完結する。GUI が「今どうなっているか」を常時握れることが CLI 版との決定的な差になる。</li>
+    <li><b>macOS では <code>mountType: "nfsmount"</code> の明示が必須（G-03 / CRIT-01）。</b> 実測した <span class="api">mount/types</span> の応答は <code>["cmount", "nfsmount"]</code> で、<b><code>mount</code>(FUSE) は登録されていない</b>。したがって省略すると <code>cmount</code> が選ばれ、macFUSE 未導入の環境では失敗する。<code>nfsmount</code> が rc に登録されていることはソース（<code>mountlib.AddRc("nfsmount", mount)</code>）と実測の両方で確認済み。</li>
+    <li><b>設定は「プロファイル」単位で汎用化する（G-04）。</b> DD-001 が固定値としていたバケット名・公開ドメイン・マウントパス・ラベルを、すべてユーザー入力項目へ昇格させる。非機密は JSON（<code>0600</code>）、Access Key ID / Secret Access Key は <b>Keychain</b> に保存し、rcd へは環境変数で注入して <b>rclone.conf に平文の secret を書かない</b>ことを原則とする。</li>
+    <li><b>共有は 2 系統をボタン化する（G-05）。</b> 恒久公開 = public バケット + カスタムドメインで <code>{publicBaseURL}/{key}</code> を組み立て、期限付き = <span class="api">operations/publiclink</span>（<code>expire</code> 付き）で presigned URL を発行。いずれもクリップボードへ即コピー。DD-001 §8 の <code>r2share</code> CLI がそのまま GUI のボタンに写像される。</li>
+    <li><b>public バケットは read-only でマウントする（G-08）。</b> DD-001 が最大の運用リスクとした「Finder で public へ直置きすると Exif 除去が働かない」を、検知や警告ではなく<b>書込みを構造的に不可能にすることで消す</b>。公開は必ず共有ダイアログを通るため、slug 化・上書き確認・メタデータ除去を迂回できない。Exif 除去自体は ImageIO でアプリ内実装し、外部 <code>exiftool</code> に依存しない（G-06 / SEC-G03）。</li>
+    <li><b>配布は Developer ID 署名 + notarization の <code>.app</code>。App Sandbox は無効（G-07）。</b> 子プロセス実行・任意パスへのマウント・localhost NFS は App Sandbox と両立しないため、Mac App Store 配布は構造的に不可能。この判断は将来も覆らない。</li>
+    <li><b>主要な技術前提は実測で確定済み（v1.2）。</b> rclone v1.75.0 を macOS 26.6.2 で実際に動かし、RC API を叩いて
+      <b>環境変数のみでのリモート定義（U-01）・per-mount の read-only（U-12・G-08 の実現機構）・<code>mount/mount</code> の同期性（U-11）・<code>_filter</code> の持続（U-08）・<code>vfsOpt</code> の数値形式（U-02）</b>の成立を確認した。
+      <b>一方で <code>Cache-Control</code> の実付与（U-04）と presigned URL の実発行（U-13）は、検証に使った <code>type=local</code> では原理的に確認できず未検証のまま</b>であり、G1-9 で実 R2 アカウントを使って確かめる。
+      あわせて本書の記述の誤りを発見・修正している（<code>mountTypes</code> に <code>mount</code> は存在せず省略時は <code>cmount</code> が選ばれる）。詳細は §14.1。</li>
+    <li><b style="color:#b23">v1.4 — 実装したところ、なお 13 件の差分が出た（M-12〜M-22）。</b>
+      本書は 2 モデルの独立レビューと実機検証を経て v1.3 に達し、両レビュアーが APPROVE を出していたが、
+      実際にコードを書いて動かすと <b>4 件は記述どおりに実装すると止まるか無言で壊れる</b>ものだった:
+      <b>(M-12)</b> <code>--log-file</code> を付けるとポートは stdout にも <b>stderr にも出ない</b>（v1.2 の訂正は不十分だった）／
+      <b>(M-13)</b> <code>operations/uploadfile</code> は <code>_async</code> で jobid を返さず、G4 の AC が成立しない／
+      <b>(T-G30)</b> 「同梱バイナリを個別署名する」（G0-3）と「ハッシュが記録と一致する」は両立しない／
+      <b>(M-15)</b> ImageIO の除去は <code>kCFNull</code> を明示しないと効かず、<b>SEC-08（MUST）が無言で壊れる</b>。<br>
+      <b>設計レビューは実装の代わりにならない。</b> 該当箇所は本文で訂正済み。全件は §14.1 の M-12〜M-22 と
+      <code>docs/IMPLEMENTATION-NOTES.md</code>。</li>
+    <li><b>冪等性は「望む終了状態」に対して設計する（§8.6・実測に基づく）。</b> 実測の結果、<span class="api">mount/unmountall</span> と <span class="api">options/set</span> は冪等だが、
+      <b><span class="api">mount/mount</span>（already mounted）と <span class="api">mount/unmount</span>（mount not found）はエラーを返す</b>ため、これらは<b>成功として扱う</b>。
+      さらに <b>rcd は <code>--rc-addr 127.0.0.1:0</code> だと二重起動しても別ポートで両方立ち上がる（CRIT-03）</b>ため、
+      <b>プロセスの単一性はアプリが PID ファイルと単一インスタンス化で担保しなければならない</b>。</li>
+    <li><b>ロードマップは 6 フェーズ・正味 6〜8 日相当</b>: G0 プロジェクト基盤 → G1 rcd 制御層 → G2 プロファイル/Keychain → G3 マウント UI → G4 共有 UI → G5 診断・配布。
+<b>v1.2 の実機検証により G1 の役割は「検証」から「実装 + 実 R2 アカウントでの通し確認」に変わり、2 日へ短縮した。</b>
+ただし <b>G1-9（実アカウントでの通し確認）は省略してはならない</b> — SigV4 署名・マルチパート・presigned の実発行（U-13）・<code>Cache-Control</code> の実付与（U-04）は、まだ一度も成功させたことがない。</li>
+  </ol>
+</div>
+
+<div class="box info">
+  <div class="box-t">§0.1 本書の位置づけ — FL-R2FS-DD-001 との関係</div>
+  <p style="margin-top:4px">
+    本書は DD-001 を<b>置き換えない</b>。DD-001 は「shoya-sue 個人の固定構成を CLI で構築する手順書」として完成しており、その技術判断（D-01〜D-07）の大半は本書でもそのまま有効である。
+    本書が扱うのは、その上に乗る <b>操作面（GUI）</b>と <b>設定面（汎用化）</b>の 2 レイヤに限る。
+    DD-001 §1.2 が明示的に OUT スコープとしていた「Web UI 付きファイルマネージャ」が、本書の IN スコープになる点が最大の差分である。
+  </p>
+  <table style="margin-top:14px">
+    <tr><th style="width:180px">DD-001 の決定</th><th style="width:110px">本書での扱い</th><th>理由 / 差分</th></tr>
+    <tr><td class="mono">D-01 nfsmount</td><td><span class="tag inherit">継承</span></td><td>macOS 26 実機でも FSKit 系は追加依存（fuse-t 1.2.0 / macFUSE FSKit backend）を要し、空き容量表示・リスト取得の不具合報告がある。nfsmount は追加依存ゼロという優位が維持されている（G-03 で再評価）</td></tr>
+    <tr><td class="mono">D-02 private/public 2 バケット物理分離</td><td><span class="tag change">汎用化</span></td><td>思想は継承。ただしバケット名は固定値ではなくプロファイルの入力項目になる。「public 指定されたバケットは GUI 上で常時オレンジ帯で警告表示」という形で物理分離を UI 上でも可視化する（§05）</td></tr>
+    <tr><td class="mono">D-03 カスタムドメイン公開</td><td><span class="tag change">汎用化</span></td><td><code>files.fracturelab.dev</code> 固定 → プロファイルの <code>publicBaseURL</code> 入力項目へ。未設定時は公開 URL コピー機能を無効化する</td></tr>
+    <tr><td class="mono">D-04 presigned URL</td><td><span class="tag inherit">継承</span></td><td>発行手段が <code>rclone link</code> CLI から <span class="api">operations/publiclink</span> RC API に変わるのみ。制約（カスタムドメイン不可・最大 7 日・失効操作不可）はそのまま</td></tr>
+    <tr><td class="mono">D-05 vfs-cache-mode full</td><td><span class="tag inherit">継承</span></td><td>GUI からは変更不可の固定値とする。§6.5 の許容範囲チューニングは「詳細設定」画面で提供（G-04）</td></tr>
+    <tr><td class="mono">D-06 バケットスコープトークン</td><td><span class="tag inherit">継承</span></td><td>オンボーディング画面で必要権限（Object Read &amp; Write・対象バケット限定）を明示し、Admin トークンの入力を推奨しない旨を表示する</td></tr>
+    <tr><td class="mono">D-07 location hint APAC</td><td><span class="tag reject">対象外</span></td><td>バケット作成は Cloudflare ダッシュボード側の作業。本アプリはバケットを作成しない（既存バケットへの接続に限る）</td></tr>
+    <tr><td class="mono">K-02 NFC 正規化</td><td><span class="tag inherit">継承</span></td><td>macOS は NFD を返すことがあり、正規化を切ると同名別ファイルが発生する。rclone の <code>--no-unicode-normalization</code> は<b>既定（false）のまま維持し、アプリから変更する手段を提供しない</b>（§6.1）。public 側は §7.3.1 の slug 規則で ASCII 化されるが、<b>private マウントへ Finder から直接置くファイル名はこの設定だけが担保する</b></td></tr>
+    <tr><td class="mono">K-05 1 オブジェクト 300GB 上限</td><td><span class="tag inherit">継承</span></td><td>運用上限。<b>アプリは強制しない</b>（Finder 経由の書込みを事前に止める手段がないため）。ただし共有ダイアログで 300GB を超えるファイルを指定した場合は警告を表示する</td></tr>
+    <tr><td class="mono">§8 r2share CLI</td><td><span class="tag change">GUI へ写像</span></td><td><code>tmp</code>/<code>pub</code>/<code>ls</code>/<code>gone</code> の 4 サブコマンドが、それぞれ「期限付き共有」「公開」「公開物一覧」「公開取り下げ」の GUI アクションになる（§07）</td></tr>
+    <tr><td class="mono">SEC-08 Exif 除去</td><td><span class="tag inherit">継承（強化）</span></td><td>除去のスキップを「毎回明示的なチェックボックス操作」に格上げ（SEC-G03）。さらに <b>G-08（public を read-only マウント）により、DD-001 が残した「Finder 直置きで除去を迂回できる」経路そのものを塞ぐ</b>。実装は外部 <code>exiftool</code> ではなく ImageIO（G-06）</td></tr>
+    <tr><td class="mono">§6.4 launchd 常駐</td><td><span class="tag change">置換</span></td><td>launchd plist 直置きから、アプリ自身の <code>SMAppService</code>（ログイン項目登録）+ アプリ内 rcd 監視へ置き換える（G-02 / §08）</td></tr>
+  </table>
+</div>
+
+<nav class="toc">
+  <h2>// INDEX</h2>
+  <ol>
+    <li><span class="n">01</span><a href="#s1">目的・スコープ・利用者像</a></li>
+    <li><span class="n">02</span><a href="#s2">システム全体像</a></li>
+    <li><span class="n">03</span><a href="#s3">技術選定と決定事項（G-01〜G-07）</a></li>
+    <li><span class="n">04</span><a href="#s4">設定モデル（プロファイル スキーマ）</a></li>
+    <li><span class="n">05</span><a href="#s5">画面設計</a></li>
+    <li><span class="n">06</span><a href="#s6">rclone rcd 制御仕様</a></li>
+    <li><span class="n">07</span><a href="#s7">共有 URL 発行仕様</a></li>
+    <li><span class="n">08</span><a href="#s8">プロセス・ライフサイクル管理と冪等性</a></li>
+    <li><span class="n">09</span><a href="#s9">セキュリティ要件</a></li>
+    <li><span class="n">10</span><a href="#s10">エラー処理・診断</a></li>
+    <li><span class="n">11</span><a href="#s11">実装ロードマップ</a></li>
+    <li><span class="n">12</span><a href="#s12">テスト計画</a></li>
+    <li><span class="n">13</span><a href="#s13">既知の制約・リスク</a></li>
+    <li><span class="n">14</span><a href="#s14">付録（未確認事項・用語・参照）</a></li>
+    <li><span class="n">15</span><a href="#s15">ブランド・アセットと命名規約</a></li>
+  </ol>
+</nav>
+
+<section id="s1">
+  <div class="sec-key">r2://spec/gui/01_scope/</div>
+  <h2>01. 目的・スコープ・利用者像</h2>
+
+  <h3>1.1 目的</h3>
+  <ul class="plain">
+    <li><b>接続の民主化。</b> DD-001 の CLI 手順（rclone.conf 手書き・launchd plist 配置・zsh スクリプト作成）を、<b>アプリ画面へのフォーム入力 1 回</b>に置き換える。ターミナルを開かずに R2 を Finder のドライブにできることを完成状態とする。</li>
+    <li><b>汎用化。</b> DD-001 が <code>fracturelab.dev</code> 専用の固定構成だったのに対し、本アプリは<b>任意の Cloudflare アカウント・任意のバケット・任意の公開ドメイン</b>を受け付ける。設定はプロファイルとして複数保持でき、切り替えられる。</li>
+    <li><b>共有の即時化。</b> マウント済みファイルを選択して 1 アクションで、恒久公開 URL または期限付き共有 URL を発行しクリップボードへ入れる。「URL を出して人に渡す」までの所要を <b>10 秒以内</b>に収める。</li>
+    <li><b>状態の可視化。</b> CLI 版では見えなかった「今マウントされているか」「未アップロードのキャッシュが残っているか」「転送中か」をメニューバーから常時確認できるようにする。DD-001 R-03（保存 ≠ 即クラウド同期）が引き起こす不安を、UI で解消する。</li>
+  </ul>
+
+  <h3>1.2 スコープ</h3>
+  <table>
+    <tr><th style="width:70px">区分</th><th>内容</th></tr>
+    <tr><td><b>IN</b></td><td>接続プロファイルの作成・編集・切替 / 認証情報の Keychain 管理 / rclone バイナリの検出・バンドル / rcd プロセスのライフサイクル管理 / マウント・アンマウントの GUI 操作 / マウント状態・転送統計の表示 / バケット内オブジェクトのブラウズ / 公開 URL・presigned URL の発行とクリップボードコピー / 公開前 Exif 除去 / 公開物一覧と取り下げ（gone 移動）/ ログイン時自動起動 / エラー診断表示 / Developer ID 署名・notarization・自動更新</td></tr>
+    <tr><td><b>OUT</b></td><td>R2 バケットそのものの作成・削除・公開設定変更（Cloudflare ダッシュボードの作業）/ Cloudflare アカウント認証（API Token 以外の OAuth 等）/ Windows・Linux 版 / 複数ユーザーでの設定共有・同期 / ファイル編集機能（Finder と既定アプリに委ねる）/ 認証付き配信（DD-001 §7.4 の Worker プロキシ。FL-R2FS-DD-002 として別途起票済み）/ S3 互換の他ストレージ（構造上は接続可能だが検証・サポート対象外）</td></tr>
+  </table>
+
+  <h3>1.3 利用者像と前提</h3>
+  <table>
+    <tr><th style="width:150px">項目</th><th>想定</th></tr>
+    <tr><td>主利用者</td><td>Cloudflare アカウントと R2 バケットは自分で用意できるが、rclone の設定ファイルや launchd を毎回書きたくない開発者・クリエイター。<b>単一利用者・単一 Mac</b>（DD-001 SEC-09 / R-04 の前提を継承）</td></tr>
+    <tr><td>前提スキル</td><td>Cloudflare ダッシュボードで R2 バケットと API トークンを発行できる。ターミナル操作は不要</td></tr>
+    <tr><td>クライアント</td><td>macOS 14 Sonoma 以降 / Apple Silicon。開発機は macOS 26.6.2 / arm64 / Xcode 26.6 / Swift 6.3（実機確認済み）</td></tr>
+    <tr><td>ネットワーク</td><td>常時接続。オフライン編集は VFS キャッシュ範囲でのみ（DD-001 R-06 継承）</td></tr>
+    <tr><td>rclone</td><td>v1.68 以上。<b>アプリに同梱する</b>（G-02）。ユーザーに <code>brew install</code> を要求しない。同梱する具体バージョンは G0-2 で確定する</td></tr>
+    <tr><td><b>開発・配布の前提</b></td><td><b>Apple Developer Program への加入（有料・年額）が必要</b>。Developer ID 証明書がないと G5 の AC「別の Mac で Gatekeeper 警告なしに起動」は達成できない。<br>
+      <b>G5 到達前の暫定配布</b>: 開発者自身は Xcode でローカルビルドして使う。他者に渡す場合は ad-hoc 署名 + 「右クリック → 開く」の手順を案内する。<br>
+      <b>注意</b>: この期間は利用者に Xcode でのビルドを要求するため、<b>ゴール「ターミナル不要で config 入力だけ」は G5 完了まで成立しない</b>。G5 は「後回しにできる仕上げ」ではなく<b>ゴール達成の必須要件</b>である</td></tr>
+  </table>
+</section>
+
+<section id="s2">
+  <div class="sec-key">r2://spec/gui/02_architecture/</div>
+  <h2>02. システム全体像</h2>
+  <p class="lead">
+    DD-001 の 2 面構成（Plane A: マウント / Plane B: 公開）はそのまま維持し、その手前に <b>Plane C: Control</b> を新設する。
+    Plane C は GUI アプリと rclone rcd からなる制御面で、ユーザーの操作はすべてここを通る。
+    重要なのは <b>GUI が rclone のプロセスを直接叩かず、必ず rcd の HTTP RC API を経由する</b>点である。これにより状態が 1 箇所に集約される。
+  </p>
+
+  <div class="arch">
+<pre>
+┌───────────────────────── <span class="s">Plane C: Control（本書の新規範囲）</span> ─────────────────────────┐
+│                                                                                          │
+│   <span class="a">SkyFolder.app</span>（SwiftUI / MenuBarExtra + Window）                                     │
+│    ├─ ProfileStore ──── profiles.json (0600)  +  <span class="a">Keychain</span>（AccessKey / Secret）        │
+│    ├─ RcdSupervisor ─── rclone rcd 子プロセスの起動・監視・終了                            │
+│    ├─ RcClient ──────── HTTP + Basic Auth ──┐                                            │
+│    ├─ MountController ─ mount/mount, mount/unmount, mount/listmounts                      │
+│    ├─ ShareService ──── operations/publiclink / 公開 URL 組み立て / Exif 除去              │
+│    └─ StatsPoller ───── core/stats, vfs/stats（1s / 5s 間隔）                             │
+│                                             │                                            │
+│                          127.0.0.1:{ephemeral port} （Basic 認証・TLS 不要）              │
+│                                             ▼                                            │
+│                        ┌──────────────────────────────┐                                  │
+│                        │  <span class="a">rclone rcd</span>（アプリ同梱バイナリ）  │                                  │
+│                        │  --rc-addr 127.0.0.1:0       │                                  │
+│                        │  --rc-user/--rc-pass（乱数）  │                                  │
+│                        │  リモート定義は環境変数注入    │                                  │
+│                        └───────┬──────────────────────┘                                  │
+└────────────────────────────────┼─────────────────────────────────────────────────────────┘
+                                 │
+        ┌────────────────────────┴────────────────────────┐
+        ▼                                                 ▼
+┌─────── <span class="s">Plane A: Mount</span> ────────┐              ┌──────── <span class="a">Plane B: Publish</span> ────────┐
+│                                  │              │                                  │
+│  macOS 内蔵 NFSv3 クライアント     │              │  外部ユーザー                      │
+│         ▲                        │              │    ├─► https://{publicBaseURL}/{key}│
+│         │ localhost NFS          │              │    │      （恒久・CDN キャッシュ）   │
+│  rclone nfsmount（rcd 内で起動）   │              │    └─► https://{acct}.r2.cloudflare │
+│         │                        │              │           storage.com/…?X-Amz-…    │
+│         ▼                        │              │           （presigned・最大 7 日）  │
+│  ~/SkyFolder/{profile}/{alias}    │              │                                  │
+│  → Finder サイドバー              │              └──────────────────────────────────┘
+└──────────────────────────────────┘                            ▲
+        │ S3 API (SigV4 / HTTPS)                                 │
+        ▼                                                        │
+   ┌───────────────────────────────────────────────────┐         │
+   │  Cloudflare R2 — https://{accountId}.r2.cloudflarestorage.com │
+   │   ├─ bucket: private バケット   ── presigned ────────┼─────────┘
+   │   └─ bucket: public バケット     ── custom domain ────┘
+   └───────────────────────────────────────────────────┘
+</pre>
+  </div>
+
+  <h3>2.1 コンポーネント責務一覧</h3>
+  <table>
+    <tr><th style="width:170px">コンポーネント</th><th>責務</th><th style="width:90px">定義節</th></tr>
+    <tr><td class="mono">ProfileStore</td><td>接続プロファイルの CRUD。非機密フィールドを JSON に永続化し、Access Key ID / Secret Access Key は Keychain に分離保存する。バリデーション（必須項目・バケット名規約・URL 形式）もここが持つ</td><td>§04</td></tr>
+    <tr><td class="mono">RcdSupervisor</td><td>同梱 rclone バイナリの <code>rcd</code> 起動・死活監視・異常終了時の再起動・アプリ終了時の確実な停止。認証情報（rc-user / rc-pass）とポートをプロセス起動ごとに生成する</td><td>§08</td></tr>
+    <tr><td class="mono">RcClient</td><td>RC API への HTTP クライアント。Basic 認証・タイムアウト・<code>_async</code> ジョブのポーリング・エラー本文の構造化を担う。<b>全 rclone 操作はこの層を通る</b></td><td>§06</td></tr>
+    <tr><td class="mono">MountController</td><td>プロファイル内の各バケットのマウント／アンマウント。<code>mountType</code> の明示（CRIT-01）、マウントポイントの作成、stale mount の掃除、<code>mount/listmounts</code> による状態同期</td><td>§06.2</td></tr>
+    <tr><td class="mono">ShareService</td><td>公開 URL の組み立て、presigned URL の発行、Exif 除去、公開バケットへのアップロード、gone 移動、クリップボードコピー</td><td>§07</td></tr>
+    <tr><td class="mono">StatsPoller</td><td><code>core/stats</code>（転送中バイト数・速度・エラー）と <code>vfs/stats</code>（未アップロードのダーティキャッシュ）を定期取得し、メニューバーのアイコン状態に反映する</td><td>§06.4</td></tr>
+    <tr><td class="mono">MenuBarExtra</td><td>常駐 UI。マウント状態のインジケータ、クイックアクション（マウント切替・Finder で開く・共有）、転送中バッジ</td><td>§05.5</td></tr>
+  </table>
+
+  <div class="box decide">
+    <div class="box-t">DESIGN INVARIANT — 状態の単一情報源</div>
+    <p style="margin-top:4px">
+      「マウントされているか」の真実は <b>常に <code>mount/listmounts</code> の応答</b>であり、アプリ内のフラグではない。
+      ユーザーが Finder から手動で「取り出し」た場合、アプリの内部フラグは古くなる（DD-001 §6.4 CAUTION と同型の問題）。
+      したがってマウント状態は <b>5 秒間隔のポーリングで listmounts から再構築</b>し、UI はその結果のみを描画する。
+      アプリがマウント要求を出したこと自体を状態として保持してはならない。
+    </p>
+  </div>
+</section>
+
+<section id="s3">
+  <div class="sec-key">r2://spec/gui/03_decisions/</div>
+  <h2>03. 技術選定と決定事項</h2>
+  <p class="lead">実装者は本節の決定 G-01〜G-07 を変更してはならない。比較根拠は監査可能性のために残す。DD-001 の D-01〜D-07 と番号空間を分けている。</p>
+
+  <h3>3.1 G-01: GUI 実装スタック → <span class="tag adopt">SwiftUI（macOS ネイティブ）</span></h3>
+  <table>
+    <tr><th style="width:120px">候補</th><th style="width:150px">構成</th><th>評価</th><th style="width:80px">判定</th></tr>
+    <tr>
+      <td><b>SwiftUI</b></td><td>Swift 6.3 / AppKit 相互運用</td>
+      <td><b>MenuBarExtra</b>（メニューバー常駐）・<b>Keychain Services</b>・<b>NSWorkspace</b>（Finder で開く / サイドバー連携）・<b>UserNotifications</b>・<b>SMAppService</b>（ログイン項目）がすべてファーストパーティ API。追加ランタイム不要で <code>.app</code> 単体配布。開発環境（Xcode 26.6 / Swift 6.3）が実機に導入済み</td>
+      <td><span class="tag adopt">採用</span></td>
+    </tr>
+    <tr>
+      <td>Tauri v2</td><td>Rust 1.90 + WebView</td>
+      <td>バイナリは軽量でクロスプラットフォーム。しかし<b>本ツールの価値の中心（Finder マウント）が macOS 固有</b>であるため、クロスプラットフォーム性が価値に変換されない。メニューバー常駐・Keychain・ログイン項目はいずれも plugin 経由で一段遠く、macOS 26 の新 API 追従はコミュニティ依存になる</td>
+      <td><span class="tag reject">不採用</span></td>
+    </tr>
+    <tr>
+      <td>Electron</td><td>Node 24 + Chromium</td>
+      <td>常駐前提のツールで 150MB+ のバンドルと数百 MB の常駐メモリは割に合わない。「マウント状態を見るために常時起きている」という本アプリの性質と最も相性が悪い</td>
+      <td><span class="tag reject">不採用</span></td>
+    </tr>
+    <tr>
+      <td>rclone 内蔵 Web GUI<br><span class="mono">(--rc-web-gui)</span></td><td>ブラウザ UI</td>
+      <td>実装ゼロで動く点は魅力だが、(a) ブラウザタブを前提とするため「メニューバー常駐」にならない、(b) rclone 汎用 UI のため R2 特化の設定入力（公開ドメイン・Exif 除去・公開/非公開の視覚的分離）を作り込めない、(c) 共有 URL 発行という本アプリ固有の中核機能が存在しない</td>
+      <td><span class="tag reject">不採用</span></td>
+    </tr>
+  </table>
+
+  <h3>3.2 G-02: rclone 制御方式 → <span class="tag adopt">rcd 常駐 + HTTP RC API</span></h3>
+  <table>
+    <tr><th style="width:150px">候補</th><th>評価</th><th style="width:80px">判定</th></tr>
+    <tr>
+      <td><b>rclone rcd 常駐<br>+ RC API</b></td>
+      <td>マウント制御（<span class="api">mount/mount</span> <span class="api">mount/unmount</span> <span class="api">mount/listmounts</span> <span class="api">mount/types</span>）、共有 URL（<span class="api">operations/publiclink</span>）、オブジェクト操作（<span class="api">operations/list</span> <span class="api">copyfile</span> <span class="api">movefile</span> <span class="api">deletefile</span> <span class="api">uploadfile</span> <span class="api">stat</span>）、進捗（<span class="api">core/stats</span> <span class="api">vfs/stats</span>）、非同期ジョブ（<span class="api">job/status</span>）が<b>すべて公式 API として存在する</b>。プロセスが 1 本に集約されるため死活監視も単純。<br>
+  <b>採用側のコスト（明記）</b>: rcd 1 本は<b>単一障害点になる</b> — プロセスが死ぬと全バケットが同時にアンマウントされる（プロセスを分ければ独立して落ちる）。
+  緩和は §8.2 の指数バックオフ自動再起動 + 再マウント。<b>この代償を承知のうえで、状態が 1 箇所に集約される利点を採る</b></td>
+      <td><span class="tag adopt">採用</span></td>
+    </tr>
+    <tr>
+      <td>CLI をその都度 spawn</td>
+      <td>実装は素朴だが、マウントは長命プロセスなので結局アプリがプロセステーブルを自前管理することになる。進捗は stdout のパースに頼ることになり、rclone の出力形式変更で壊れる。複数マウントで N 本のプロセス監視が必要</td>
+      <td><span class="tag reject">不採用</span></td>
+    </tr>
+    <tr>
+      <td>rclone を Go ライブラリとして組み込む</td>
+      <td>プロセス境界が消えて理論上は最速だが、Swift から Go ライブラリを cgo 経由で呼ぶブリッジ層が必要になり、rclone のバージョン追従コストが跳ね上がる。得られる利点（プロセス 1 本の削減）に対して代償が大きすぎる</td>
+      <td><span class="tag reject">不採用</span></td>
+    </tr>
+  </table>
+
+  <div class="box danger">
+    <div class="box-t">CRIT-01 — mountType の明示は必須</div>
+    <p style="margin-top:4px">
+      <b>実測（rclone v1.75.0 / macOS 26.6.2 arm64）:</b> <span class="api">mount/types</span> の応答は
+      <code>["cmount", "nfsmount"]</code> であり、<b><code>mount</code>（FUSE 版）は登録されていない</b>。
+      したがって <code>mountType</code> を省略すると <b><code>cmount</code> が選ばれ、macFUSE 未導入の環境では失敗する</b>
+      — ユーザーには「よく分からないエラー」として現れる。<br>
+      <b>本アプリは <code>mount/mount</code> の呼び出しで必ず <code>"mountType": "nfsmount"</code> を明示する。</b>
+      <code>nfsmount</code> が rc に登録されていることは、<code>cmd/nfsmount/nfsmount.go</code> の <code>mountlib.AddRc(name, mount)</code>（<code>//go:build unix</code>）というソース上の根拠と、
+      上記の <span class="api">mount/types</span> 実測の両方で確認済み。<br>
+      起動時に <span class="api">mount/types</span> を呼び、応答配列に <code>nfsmount</code> が含まれない場合は<b>マウント機能全体を無効化</b>し、同梱 rclone のビルド不整合として診断表示する（§10 E-03）。
+    </p>
+  </div>
+
+  <h3>3.3 G-03: マウント方式 → <span class="tag adopt">nfsmount 継続（DD-001 D-01 の再評価）</span></h3>
+  <p>
+    DD-001 §3.1 NOTE は「macOS 26 以降で FSKit 対応が安定したら移行を検討」としていた。開発機はすでに macOS 26.6.2 であるため、本書で再評価する。
+  </p>
+  <table>
+    <tr><th style="width:150px">方式</th><th>macOS 26 時点の状況</th><th style="width:80px">判定</th></tr>
+    <tr><td><b>nfsmount</b></td><td>rclone 本体のみで完結。追加インストール物ゼロ。<b>アプリに rclone を同梱すればユーザーの導入作業が完全にゼロになる</b>（G-02 と組み合わせたときの効果が大きい）</td><td><span class="tag adopt">採用</span></td></tr>
+    <tr><td>FSKit backend<br>（fuse-t 1.2.0）</td><td>macOS 26+ で FSKit バックエンドが利用可能になったが、fuse-t 1.2.0 + rclone の組み合わせで<b>空き容量表示の誤り・コンテンツ一覧取得エラー</b>の報告がある。またユーザーに fuse-t の別途インストールを要求する点が「入力だけで繋がる」という本アプリの目的に反する</td><td><span class="tag reject">不採用（再評価対象）</span></td></tr>
+    <tr><td>macFUSE FSKit backend</td><td>kext なしで動作する FSKit backend がリリースされているが、<code>-obackend=fskit</code> 使用時の「File system named macfuse not found」等の不具合報告があり成熟途上。同じく別途インストールを要求する</td><td><span class="tag reject">不採用（再評価対象）</span></td></tr>
+  </table>
+  <div class="box info">
+    <div class="box-t">NOTE — 移行の受け皿は用意する</div>
+    <p style="margin-top:4px">
+      マウント方式は <b>プロファイルのフィールド <code>mountType</code>（既定 <code>"nfsmount"</code>）として持つ</b>。
+      値の候補は起動時の <span class="api">mount/types</span> の応答から動的に構成し、「詳細設定」画面でのみ変更可能とする（既定では非表示）。
+      これにより FSKit 系が成熟した時点で、<b>コード変更なしに切り替え検証ができる</b>。DD-001 §3.1 が「マウントコマンド 1 行の差し替えで移行可能な構造」としていた要件を、GUI では設定値へ昇格させる形で満たす。
+    </p>
+  </div>
+
+  <h3>3.4 G-04: 設定モデル → <span class="tag adopt">プロファイル方式・非機密 JSON + 機密 Keychain</span></h3>
+  <p>
+    DD-001 の固定値をすべてユーザー入力へ昇格させる。認証情報の扱いが最大の設計点であり、以下の 3 案から選定した。
+  </p>
+  <table>
+    <tr><th style="width:180px">認証情報の保持方式</th><th>評価</th><th style="width:80px">判定</th></tr>
+    <tr>
+      <td><b>Keychain 保存 +<br>rcd へ環境変数注入</b></td>
+      <td>Secret がディスク上の設定ファイルに平文で存在しない。rcd プロセスの環境変数としてのみ存在し、プロセス終了で消える。DD-001 SEC-02（rclone.conf を 600 にして vault/iCloud に置かない）の意図を、より強い形で満たす。<b>機構は rclone v1.75.0 / macOS 26.6.2 での実機検証により確定（§14.1 U-01）</b> — <code>RCLONE_CONFIG_&lt;REMOTE&gt;_&lt;KEY&gt;</code> のみを設定し <code>--config ""</code> で起動して <span class="api">operations/list</span> が正常応答した。<br>
+        <b>ただし S3 固有のキー名（<code>PROVIDER</code> / <code>NO_CHECK_BUCKET</code> / <code>ACL</code> 等）が実バケットに対して正しく働くことは G1-3 で確認する</b>（キー名が s3 バックエンドに実在することと、<code>provider</code> の選択肢に <code>Cloudflare</code> があることは確認済み）</td>
+      <td><span class="tag adopt">採用<br><b>機構は実測で確定</b></span></td>
+    </tr>
+    <tr>
+      <td>Keychain 保存 +<br>専用 rclone.conf を生成</td>
+      <td><b>実装不要になった。</b> v1.2 の実機検証で U-01（環境変数のみでのリモート定義）が成立したため、フォールバックの出番がない。<br>
+        <span class="g">（記録として残す）この案は「アプリ管理下に <code>0600</code> で生成し終了時に削除」する設計だったが、クラッシュ・強制終了・電源断で<b>平文 secret がディスクに残り続ける</b>という弱点があった。第 1 案が成立したことで、この弱点ごと消えている。</span></td>
+      <td><span class="tag reject">実装不要</span></td>
+    </tr>
+    <tr>
+      <td>rc <span class="api">config/create</span> で作成</td>
+      <td>API としては存在するが、<b>結果が rclone の設定ファイルに永続化される</b>ため、secret をディスクに書かないという第 1 案の利点が失われる。削除タイミングの制御もアプリから見えにくい</td>
+      <td><span class="tag reject">不採用</span></td>
+    </tr>
+  </table>
+
+  <h3>3.5 G-05: 共有 URL 発行 → <span class="tag adopt">2 系統をボタンとして分離</span></h3>
+  <table>
+    <tr><th style="width:110px">系統</th><th style="width:200px">実現手段</th><th>UI 上の扱い</th></tr>
+    <tr>
+      <td><b>恒久公開</b></td>
+      <td>public バケットへアップロード（<span class="api">operations/copyfile</span>）→ <code>{publicBaseURL}/{key}</code> を<b>アプリ側で文字列組み立て</b>。<br><b>Finder コピーによる公開経路は G-08 により存在しない</b></td>
+      <td><code>visibility == "public"</code> かつ <code>publicBaseURL</code> が設定済みのバケットが存在する場合のみ有効（解決規則は §7.1 RULE）。オレンジ帯の警告色で「これは公開操作である」ことを明示。実行前に確認ダイアログ（初回のみでなく毎回）</td>
+    </tr>
+    <tr>
+      <td><b>期限付き共有</b></td>
+      <td><span class="api">operations/publiclink</span>（<code>fs</code>, <code>remote</code>, <code>expire</code>）→ SigV4 presigned URL</td>
+      <td>既定 24 時間。上限 7 日（604800 秒）を超える入力はバリデーションで拒否し、恒久公開への誘導を表示。ホストが <code>{accountId}.r2.cloudflarestorage.com</code> 固定になる旨を URL 表示欄に注記（DD-001 R-05 継承）</td>
+    </tr>
+  </table>
+
+  <h3>3.6 G-06: 公開前 Exif 除去 → <span class="tag adopt">アプリ内実装（外部 exiftool に依存しない）</span></h3>
+  <p>
+    DD-001 §8.3 は <code>exiftool</code> の外部インストールを前提とし、未導入時は <code>exit 3</code> で中断する設計だった。
+    GUI アプリでは「ユーザーに Homebrew でのインストールを要求する」ことが目的（入力だけで完結）に反するため、方式を変更する。
+  </p>
+  <table>
+    <tr><th style="width:160px">方式</th><th>評価</th><th style="width:80px">判定</th></tr>
+    <tr>
+      <td><b>ImageIO<br>（CGImageDestination）</b></td>
+      <td>macOS 標準フレームワーク。<code>CGImageSourceCreateWithURL</code> で読み、メタデータ辞書から <code>kCGImagePropertyGPSDictionary</code> / <code>kCGImagePropertyExifDictionary</code> / <code>kCGImagePropertyIPTCDictionary</code> / <code>kCGImagePropertyTIFFDictionary</code> を除去し、<b><code>kCGImagePropertyOrientation</code> と ICC プロファイルは明示的に保持</b>して再エンコードする。追加依存ゼロ。DD-001 F-16（Orientation / ICC を剥がすと横倒し・色崩れ）の教訓をそのまま適用する</td>
+      <td><span class="tag adopt">採用</span></td>
+    </tr>
+    <tr>
+      <td>exiftool を同梱</td>
+      <td>Perl ランタイムごとの同梱になりバンドルサイズと署名の複雑度が跳ねる</td>
+      <td><span class="tag reject">不採用</span></td>
+    </tr>
+    <tr>
+      <td>外部 exiftool に依存<br>（DD-001 と同じ）</td>
+      <td>「ターミナル不要」という目的に反する。ただし<b>検出できた場合は選択肢として提供</b>する（HEIC 等 ImageIO の再エンコードで劣化を避けたいケースの逃げ道）</td>
+      <td><span class="tag reject">既定では不採用</span></td>
+    </tr>
+  </table>
+  <div class="box warn">
+    <div class="box-t">CAUTION — 再エンコードによる劣化</div>
+    <p style="margin-top:4px">
+      ImageIO 方式は JPEG を再エンコードするため、<b>厳密には非可逆</b>である。品質パラメータは <code>kCGImageDestinationLossyCompressionQuality = 1.0</code> を指定し、可能な限り劣化を抑える。
+      PNG・TIFF は可逆なので問題にならない。原本の劣化を避けたい場合のため、公開ダイアログに「メタデータを除去せず公開（非推奨）」のチェックボックスを置く（SEC-G03）。
+    </p>
+  </div>
+
+  <h3>3.7 G-08: public バケットのマウント → <span class="tag adopt">read-only でマウントする</span></h3>
+  <div class="box decide">
+    <div class="box-t">DECISION — 最重要リスクを、検知ではなく構造で消す</div>
+    <p style="margin-top:4px">
+      DD-001 §0.5 が最大の運用リスクとした「Finder で public へ直置きすると Exif 除去が働かない」は、
+      <b>public バケットを読み書き可能でマウントしているからこそ発生する</b>。
+      書込みを構造的に不可能にすれば、この経路は<b>検知するまでもなく存在しなくなる</b>。
+    </p>
+  </div>
+  <table>
+    <tr><th style="width:150px">案</th><th>評価</th><th style="width:80px">判定</th></tr>
+    <tr>
+      <td><b>public は read-only<br>でマウント</b></td>
+      <td><code>vfsOpt</code> に <code>"ReadOnly": true</code> を指定する（<code>visibility == "public"</code> のバケットにのみ適用）。<br>
+        <b>利点</b>: (a) Finder 直置きによる Exif 未除去公開が<b>原理的に発生しない</b> — CRIT-02 の検知機構（FSEvents）も U-07 の不確実性も丸ごと不要になる。
+        (b) 公開バケットの誤削除・誤上書きも同時に防げる。
+        (c) 「公開は必ず共有ダイアログを通る」という単一経路が強制され、slug 化・上書き確認・メタデータ除去が<b>迂回できなくなる</b>。
+        (d) 実装量が<b>減る</b>（G4-6 が不要になる）。<br>
+        <b>代償</b>: Finder から public のファイルを直接削除・リネームできない。これらはアプリの「公開物一覧」（§5.4）から行う。
+        公開物の管理は元々 <code>gone/</code> 移動という特殊な運用（DD-001 §4.4 の URL 不変性）を要するため、<b>むしろアプリ経由に限定するほうが正しい</b></td>
+      <td><span class="tag adopt">採用</span></td>
+    </tr>
+    <tr>
+      <td>read-write でマウントし<br>FSEvents で検知・是正</td>
+      <td>Finder から直接操作できる自由度は高いが、<b>本書で最も重大な残存リスクを抱え込んだうえ、その対策が未検証の前提（FSEvents が NFS 上で発火するか＝U-07）に依存する</b>。
+        さらに検知はアップロード完了後に働くため、原本が公開される時間窓を原理的に消せない。
+        自由度と引き換えに負う代償として釣り合わない</td>
+      <td><span class="tag reject">不採用</span></td>
+    </tr>
+    <tr>
+      <td>public をマウントしない</td>
+      <td>リスクは最小だが、公開済みファイルを Finder で閲覧・プレビューできなくなり、「Finder にマウントする」という本ツールの中心価値が半減する</td>
+      <td><span class="tag reject">不採用</span></td>
+    </tr>
+  </table>
+  <div class="box info">
+    <div class="box-t">NOTE — この決定が本書に及ぼす影響</div>
+    <ul class="plain" style="margin-top:4px">
+      <li><b>CRIT-02（FSEvents による検知）は v1.0 では実装しない。</b> read-only マウントにより対象の経路が存在しないため</li>
+      <li><b>U-07（FSEvents が NFS 上で発火するか）は v1.0 のブロッカーから外れる。</b> 参考情報として残す</li>
+      <li><b>G4-6（検知の実装）はロードマップから削除</b>し、代わりに「public が read-only でマウントされていることの検証」を置く</li>
+      <li>ユーザーが意図的に public へ直接書きたい場合のため、<b>詳細設定に <code>allowDirectWriteToPublic</code>（既定 false）を用意する</b>。true にすると read-write でマウントされ、その旨の警告が設定画面とメイン画面に常時表示される。<b>この設定を有効にした場合のみ</b>、Exif 未除去公開のリスクを利用者が引き受けたものとして扱う。<br>
+        <b>反映タイミング</b>: この設定の変更は<b>即座に該当バケットを再マウントして反映する</b>（アンマウント → 設定変更 → 再マウント）。手動再マウントを待つ実装にしてはならない — 「設定したのに反映されていない」状態が生まれ、<b>ユーザーが read-only だと誤認したまま書込みを試みる</b>ことになるため</li>
+      <li><b>この決定は実測で成立を確認済み（U-12）。</b> 同一 rcd から 2 箇所にマウントし、<code>ReadOnly: true</code> 側だけが書込み・削除を拒否することを確認した（rclone v1.75.0 / macOS 26.6.2）</li>
+      <li><b>ただし OS レベルでは read-only ボリュームにならない（M-01）。</b> <code>mount</code> の出力に <code>read-only</code> フラグは付かず、拒否は rclone の VFS 層で行われる。
+        <b>つまり Finder は「書ける」と認識してドラッグ&ドロップを許可し、そのあとで失敗する。</b>
+        「Finder が事前に止めてくれる」ことを期待した設計にしてはならず、<b>§5.2 の「読み取り専用」バッジと E-14 の案内が必須</b>になる。
+        安全性（Exif 除去の迂回を防ぐ）は達成されるが、<b>操作を試みたユーザーには失敗が起きる</b>という UX 上の代償を伴う</li>
+    </ul>
+  </div>
+
+  <h3>3.8 G-07: 配布形態 → <span class="tag adopt">Developer ID 署名 + notarization / App Sandbox 無効</span></h3>
+  <table>
+    <tr><th style="width:150px">項目</th><th>決定</th><th>理由</th></tr>
+    <tr><td>App Sandbox</td><td><b>無効</b></td><td>(a) 同梱 rclone バイナリの子プロセス実行、(b) 任意のユーザー指定パスへのマウント、(c) localhost へのネットワーク待ち受け（NFS サーバ）— いずれも Sandbox の制約と原理的に両立しない</td></tr>
+    <tr><td>Mac App Store</td><td><b>配布不可</b></td><td>上記の帰結。この判断は将来も覆らないため、配布戦略を MAS 前提で立ててはならない</td></tr>
+    <tr><td>署名</td><td>Developer ID Application</td><td>Gatekeeper 通過に必須。<b>同梱する rclone バイナリも個別に署名する</b>（ネストされた実行可能ファイルは個別署名が必要）</td></tr>
+    <tr><td>Hardened Runtime</td><td>有効</td><td>notarization の必須要件。<code>com.apple.security.cs.allow-jit</code> 等は不要だが、<b>同梱バイナリ実行のため <code>com.apple.security.cs.disable-library-validation</code> の要否を P5 で検証</b>する</td></tr>
+    <tr><td>notarization</td><td>必須</td><td><code>notarytool</code> による公証 + <code>stapler</code> でチケット添付。未公証だと初回起動が著しく煩雑になる</td></tr>
+    <tr><td>ログイン時起動</td><td><code>SMAppService.mainApp</code></td><td>DD-001 §6.4 の launchd plist 直置きを置換。ユーザーが「システム設定 &gt; 一般 &gt; ログイン項目」から可視・制御できる正規の方法</td></tr>
+  </table>
+</section>
+
+<section id="s4">
+  <div class="sec-key">r2://spec/gui/04_config/</div>
+  <h2>04. 設定モデル（プロファイル スキーマ）</h2>
+  <p class="lead">
+    「config 設定を自分で入力するだけで R2 と接続できる」という要求の中核。
+    DD-001 §14.1 では置換対象がプレースホルダ 4 つに限定されていたが、本アプリではその制約を外し、
+    <b>接続に関わる全項目をプロファイルのフィールドとして外出しする</b>。
+  </p>
+
+  <h3>4.1 保存先とファイル権限</h3>
+  <table>
+    <tr><th style="width:190px">対象</th><th>保存先</th><th style="width:100px">権限</th></tr>
+    <tr><td>非機密フィールド全般</td><td class="mono">~/Library/Application Support/dev.fracturelab.skyfolder/profiles.json</td><td class="mono c">0600</td></tr>
+    <tr><td>Access Key ID<br>Secret Access Key</td><td>Keychain（<code>kSecClassGenericPassword</code>、<code>service = dev.fracturelab.skyfolder</code>）。<b>2 値を 1 項目に詰めず、<code>account</code> を分けて 2 項目として保存する</b>: <code>account = "{profileId}.accessKeyId"</code> と <code>account = "{profileId}.secretAccessKey"</code>。<br>1 項目に JSON で詰めると、Access Key ID を読むだけの場面でも Secret を復号することになるため分離する</td><td class="c">当該アプリの<br>署名に限定</td></tr>
+    <tr><td>rcd 認証情報<br>（rc-user / rc-pass）</td><td><b>メモリのみ</b>。rcd 起動ごとに乱数生成し、永続化しない</td><td class="c">—</td></tr>
+    <tr><td>rclone の設定ファイル</td><td><b>生成しない。</b>リモート定義は環境変数で注入する（U-01 が実測で成立）。rcd は <code>--config ""</code> で起動する</td><td class="c">—</td></tr>
+    <tr><td>ログ</td><td class="mono">~/Library/Logs/SkyFolder/{profileId}.log</td><td class="mono c">0600</td></tr>
+    <tr><td>VFS キャッシュ</td><td class="mono">~/Library/Caches/dev.fracturelab.skyfolder/{profileId}/</td><td class="mono c">0700</td></tr>
+  </table>
+  <div class="box danger">
+    <div class="box-t">MUST — 既定の rclone.conf を汚さない</div>
+    <p style="margin-top:4px">
+      本アプリは <code>~/.config/rclone/rclone.conf</code> を<b>読まないし書かない</b>。
+      ユーザーが既に CLI で rclone を使っている場合、その設定を壊すことは重大な事故になる。
+      rcd 起動時は必ず <code>--config ""</code>（空文字）を明示する。リモート定義は環境変数で注入するため、設定ファイルは<b>一切生成しない</b>（U-01 が実測で成立）。
+    </p>
+  </div>
+
+  <h3>4.2 プロファイル スキーマ</h3>
+  <div class="file-label">profiles.json（JSON Schema 相当の記述）</div>
+<pre>{
+  <span class="hl">"schemaVersion"</span>: 1,
+  <span class="hl">"activeProfileId"</span>: "prof_01J...",
+  <span class="hl">"profiles"</span>: [
+    {
+      <span class="cm">// ---- 識別 ----</span>
+      "id":            "prof_01J...",        <span class="cm">// ULID。生成後不変。Keychain の account キーを兼ねる</span>
+      "displayName":   "fracturelab",         <span class="cm">// 必須。UI 表示名。1–40 文字</span>
+
+      <span class="cm">// ---- R2 接続（必須）----</span>
+      "accountId":     "0123abcd...",         <span class="cm">// 必須。32 桁 hex。endpoint 組み立てに使用</span>
+      "endpoint":      "",                    <span class="cm">// 任意。空なら https://{accountId}.r2.cloudflarestorage.com</span>
+      <span class="cm">// accessKeyId / secretAccessKey は Keychain。JSON には保存しない</span>
+
+      <span class="cm">// ---- バケット定義（1 個以上）----</span>
+      "buckets": [
+        {
+          "alias":       "private",           <span class="cm">// 必須。マウントパスの末尾要素になる。[a-z0-9-]{1,32}</span>
+          "bucketName":  "flab-stor-private", <span class="cm">// 必須。R2 上の実バケット名。[a-z0-9-]{3,63}</span>
+          "visibility":  "private",           <span class="cm">// 必須。"private" | "public"</span>
+          "mountPath":   "~/SkyFolder/fracturelab/private",  <span class="cm">// 必須。既定 ~/SkyFolder/{displayNameSlug}/{alias}</span>
+          "autoMount":   true,                <span class="cm">// アプリ起動時に自動マウントするか</span>
+          "publicBaseURL": ""                 <span class="cm">// visibility=="public" のときのみ有効・必須</span>
+        },
+        {
+          "alias":       "public",
+          "bucketName":  "flab-stor-public",
+          "visibility":  <span class="hl">"public"</span>,           <span class="cm">// G-08: "public" なら read-only マウントが自動導出される。</span>
+                                              <span class="cm">// read-only を独立フィールドとして持たない（設定の二重管理を避ける）。</span>
+                                              <span class="cm">// 覆せるのは advanced.allowDirectWriteToPublic のみ</span>
+          "mountPath":   "~/SkyFolder/fracturelab/public",
+          "autoMount":   true,
+          "publicBaseURL": <span class="hl">"https://files.fracturelab.dev"</span>  <span class="cm">// 末尾スラッシュなし</span>
+        }
+      ],
+
+      <span class="cm">// ---- 共有の既定値 ----</span>
+      "share": {
+        "defaultExpire":      "24h",          <span class="cm">// presigned の既定期限。上限 168h(7d)</span>
+        "stripImageMetadata": true,           <span class="cm">// SEC-G03。既定 true。false にはダイアログ毎回操作が必要</span>
+        "publicKeyTemplate":  "{prefix}/{yyyy}/{slug}.{ext}",  <span class="cm">// DD-001 §4.4 準拠</span>
+        "defaultPrefix":      "assets",
+        "immutableCacheControl": false        <span class="cm">// true で max-age=31536000, immutable を付与</span>
+      },
+
+      <span class="cm">// ---- 詳細設定（既定では UI 非表示。DD-001 §6.5 の許容範囲に一致）----</span>
+      "advanced": {
+        "mountType":        "nfsmount",       <span class="cm">// G-03。mount/types の応答から選択</span>
+        <span class="hl">"allowDirectWriteToPublic"</span>: false, <span class="cm">// G-08。既定 false = public は read-only。</span>
+                                              <span class="cm">// true にすると public も書込み可になるが、Finder 直置きで</span>
+                                              <span class="cm">// Exif 除去が迂回されるリスクを利用者が引き受けたものとして扱う</span>
+        "vfsCacheMode":     "full",           <span class="cm">// 固定。UI で変更不可（D-05 継承）</span>
+        "vfsCacheMaxSizeGB": 10,              <span class="cm">// 許容 5–50</span>
+        "vfsWriteBackSec":  15,               <span class="cm">// 許容 5–60</span>
+        "transfers":        8,                <span class="cm">// 許容 4–16</span>
+        "dirCacheTimeSec":  60,               <span class="cm">// 許容 60–300。60 未満は禁止（DD-001 §10 コスト制約）</span>
+        "vfsReadChunkSizeMB": 16,
+        "s3ChunkSizeMB":    64,
+        "s3UploadCutoffMB": 128,
+        "excludes": [".DS_Store", "._*", ".Spotlight-V100/**", ".Trashes/**"]  <span class="cm">// K-04 継承</span>
+      }
+    }
+  ]
+}</pre>
+
+  <h3>4.3 入力バリデーション</h3>
+  <p>接続テスト実行前に、以下をクライアント側で検証する。エラーは該当フィールド直下にインライン表示する（ダイアログにしない）。</p>
+  <table>
+    <tr><th style="width:70px">ID</th><th style="width:150px">対象</th><th>規則</th></tr>
+    <tr><td class="mono">V-01</td><td>accountId</td><td><code>^[0-9a-f]{32}$</code>。Cloudflare ダッシュボードから貼り付けたときの前後空白を自動 trim</td></tr>
+    <tr><td class="mono">V-02</td><td>bucketName</td><td><code>^[a-z0-9][a-z0-9-]{1,61}[a-z0-9]$</code>（3–63 文字・小文字英数とハイフン）。DD-001 §4.1 の命名規則に一致</td></tr>
+    <tr><td class="mono">V-03</td><td>alias</td><td><code>^[a-z0-9-]{1,32}$</code>。同一プロファイル内で一意</td></tr>
+    <tr><td class="mono">V-03b</td><td>displayName →<br>mountPath の既定値</td><td><code>displayName</code> は日本語を含む任意の 1–40 文字を許すため、<b>そのままパスに使えない</b>。既定 <code>mountPath</code> の生成に使う slug は次の規則で作る: 小文字化 → 空白を <code>-</code> に → <code>[^a-z0-9-]</code> を除去 → 先頭末尾の <code>-</code> を除去 → 32 文字で切り詰め。<b>結果が空文字になった場合（displayName が全て日本語の場合など）は <code>profile-{idの先頭8文字}</code> を使う</b>。<br>これは既定値の生成にのみ使う規則で、ユーザーが <code>mountPath</code> を直接編集すればそちらが優先される</td></tr>
+    <tr><td class="mono">V-04</td><td>mountPath</td><td>絶対パスまたは <code>~/</code> 始まり。<b>既存の非空ディレクトリを指してはならない</b>（データ隠蔽の事故防止）。同一プロファイル内・他プロファイル間で重複禁止</td></tr>
+    <tr><td class="mono">V-05</td><td>publicBaseURL</td><td><code>https://</code> 始まり・末尾スラッシュなしに正規化。<b><code>*.r2.dev</code> を入力した場合は警告を表示</b>（DD-001 D-03 / SEC-05: r2.dev はレート制限付きで本番非推奨）</td></tr>
+    <tr><td class="mono">V-06</td><td>visibility=="public"</td><td><code>publicBaseURL</code> が必須。未設定なら公開 URL コピー機能を無効化し、その旨をバケット行に表示</td></tr>
+    <tr><td class="mono">V-07</td><td>defaultExpire</td><td>1 分〜168 時間（7 日）。上限超過時は「7 日を超える共有は公開バケットの利用を検討してください」を表示（DD-001 §8.2 の 7d 上限規則を継承）</td></tr>
+    <tr><td class="mono">V-08</td><td>dirCacheTimeSec</td><td>60 未満を拒否。理由（Class A 課金の増大）をツールチップで説明</td></tr>
+    <tr><td class="mono">V-09</td><td>secretAccessKey</td><td>空でないこと。<b>入力欄はマスク表示・コピー不可</b>。保存後は再表示せず「設定済み」とだけ表示する</td></tr>
+  </table>
+
+  <h3>4.4 接続テスト（保存の前提条件）</h3>
+  <p>プロファイル保存前に「接続テスト」を必須で通す。手順は DD-001 §6.2 の疎通確認を API に写像したもの。</p>
+  <table>
+    <tr><th style="width:60px">順</th><th style="width:230px">操作</th><th>合格条件 / 失敗時の診断</th></tr>
+    <tr><td class="c">1</td><td><span class="api">config/create</span> または環境変数注入でリモートを構成</td><td>rcd が起動していること。未起動なら先に起動する</td></tr>
+    <tr><td class="c">2</td><td>各バケットに対し <span class="api">operations/list</span>（<code>fs: "r2:{bucketName}"</code>, <code>remote: ""</code>, <code>opt.maxDepth: 1</code>）</td><td><b>エラーなく応答すること（空リストは正常）</b>。403 系なら「トークンの権限またはバケット名を確認してください」を表示</td></tr>
+    <tr><td class="c">3</td><td>書込み権限の確認: <span class="api">operations/copyfile</span> で <code>.skyfolder-probe</code> を PUT</td><td>成功すること。失敗時は「Object Read &amp; Write 権限が必要です」を表示</td></tr>
+    <tr><td class="c">4</td><td>後片付け: <span class="api">operations/deletefile</span> で同キーを削除</td><td>成功すること。<b>削除権限の検証を兼ねる</b>（DD-001 F-09 と同趣旨）</td></tr>
+    <tr>
+      <td class="c"><b>5</b></td>
+      <td><b>公開 URL の到達性検証</b>（<code>visibility == "public"</code> かつ <code>publicBaseURL</code> 設定済みのバケットのみ）:<br>
+        (a) <span class="api">operations/copyfile</span> でプローブ <code>.skyfolder-probe-{乱数}.txt</code> を PUT<br>
+        (b) <b>アプリから直接 HTTPS で</b> <code>{publicBaseURL}/.skyfolder-probe-{乱数}.txt</code> を GET<br>
+        (c) <span class="api">operations/deletefile</span> でプローブを削除</td>
+      <td><b>(b) が 200 を返し、本文が PUT した内容と一致すること。</b><br>
+        失敗時（404 / 名前解決失敗 / TLS エラー）は E-13 として<b>「バケットにカスタムドメインが接続されていません」</b>を表示し、
+        Cloudflare ダッシュボードの該当画面を開くボタンと DD-001 §7.1 の手順を提示する。<br>
+        <b>この検証は失敗しても保存を妨げない（警告扱い）</b> — マウントだけ使う構成を許容するため。
+        ただし<b>恒久公開の機能は無効化</b>し、バケット行に「公開 URL 未確認」を表示する</td>
+    </tr>
+  </table>
+  <div class="box danger">
+    <div class="box-t">MUST — 「接続テスト全項目 ✓」が公開 URL の動作を保証しなければならない</div>
+    <p style="margin-top:4px">
+      手順 1〜4 は R2 の <b>S3 API への到達性</b>しか検証しない。カスタムドメインの接続は Cloudflare ダッシュボード側の作業であり（DD-001 §7.1）、
+      本アプリの OUT スコープである。<b>手順 5 がないと、ドメイン未接続のまま「接続テスト全項目 ✓」と表示され、
+      共有 URL を相手に渡して 404 が返って初めて破綻が露見する。</b>
+      これはユーザーが最も損害を被る失敗の形（他人に壊れたリンクを渡す）であるため、手順 5 を省略してはならない。
+    </p>
+  </div>
+  <div class="box danger">
+    <div class="box-t">MUST — アカウント全体の列挙を疎通判定に使わない</div>
+    <p style="margin-top:4px">
+      DD-001 F-01 の再発防止。バケットスコープの API トークン（D-06 継承）では <b>ListBuckets が権限不足で失敗する</b>。
+      <code>operations/list</code> に <code>fs: "r2:"</code>（バケット名なし）を渡す実装をしてはならない。
+      これをやると正しいトークンを「トークン不良」と誤診断し、ユーザーが解決不能なループに入る。
+      <b>接続テストは必ずバケット名を含む <code>fs</code> で行う。</b>
+    </p>
+  </div>
+</section>
+
+<section id="s5">
+  <div class="sec-key">r2://spec/gui/05_ui/</div>
+  <h2>05. 画面設計</h2>
+  <p class="lead">画面は 5 つ。「初回セットアップ」「プロファイル設定」「マウント管理（メイン）」「共有」「診断」。加えて常駐のメニューバー UI を持つ。</p>
+
+  <h3>5.1 初回セットアップ（オンボーディング）</h3>
+  <p>初回起動時のみ表示する 4 ステップのウィザード。各ステップは「Cloudflare ダッシュボードで何をするか」を具体的に指示する。</p>
+  <div class="wire">
+    <span class="lbl">STEP 2/4 — R2 API トークン</span>
+<pre>
+┌──────────────────────────────────────────────────────────────────────┐
+│  ●━━━━━●━━━━━○━━━━━○      SkyFolder のセットアップ                    │
+│  アカウント  <span class="a">トークン</span>  バケット  確認                                    │
+│                                                                      │
+│  Cloudflare ダッシュボード → R2 → Manage R2 API Tokens →             │
+│  <span class="a">Create API token</span> で以下の設定のトークンを作成してください。            │
+│                                                                      │
+│   ┌────────────────────────────────────────────────────────┐        │
+│   │ Permissions      <span class="a">Object Read &amp; Write</span>                      │        │
+│   │ Specify bucket(s) 使用する 2 バケットのみを指定           │        │
+│   │ ⚠︎ Admin 権限のトークンは使用しないでください             │        │
+│   └────────────────────────────────────────────────────────┘        │
+│                                    [ ダッシュボードを開く ↗ ]        │
+│                                                                      │
+│  Access Key ID      [                                        ]      │
+│  Secret Access Key  [ ••••••••••••••••••••••••••••••••       ]      │
+│                     <span class="g">Keychain に保存されます。設定ファイルには書かれません。</span> │
+│                                                                      │
+│                                      [ 戻る ]     [ 次へ → ]        │
+└──────────────────────────────────────────────────────────────────────┘
+</pre>
+  </div>
+  <table>
+    <tr><th style="width:80px">ステップ</th><th>内容</th></tr>
+    <tr><td class="c">1/4</td><td>Account ID の入力。「ダッシュボード右サイドから 32 桁の ID をコピー」の説明と、ダッシュボードを開くボタン</td></tr>
+    <tr><td class="c">2/4</td><td>API トークン発行の手順提示と Access Key ID / Secret の入力（上図）。<b>必要権限を画面上に明示</b>（DD-001 D-06 / SEC-01 の運用をここで担保する）</td></tr>
+    <tr><td class="c">3/4</td><td>バケットの登録。<code>bucketName</code> / <code>alias</code> / <code>visibility</code> / <code>mountPath</code>。<b>public を選ぶと <code>publicBaseURL</code> の入力欄が現れ、同時に「このバケットに置いたものは URL を知る誰でも読める」という警告帯が表示される</b>。<br>
+      <code>publicBaseURL</code> の入力欄には <b>「このドメインは Cloudflare ダッシュボードで対象バケットに接続済みである必要があります」</b>という注記と、<b>ダッシュボードの Custom Domains 画面を開くボタン</b>を置く（接続作業自体は本アプリの OUT スコープ。手順は DD-001 §7.1）。<br>
+      未接続のまま進めた場合は STEP 4/4 の手順 5 で検出される</td></tr>
+    <tr><td class="c">4/4</td><td>§4.4 の接続テストを実行し、結果を項目ごとに ✓ / ✗ で表示。全項目通過で「完了」ボタンが有効化される</td></tr>
+  </table>
+
+  <h3>5.2 マウント管理（メイン画面）</h3>
+  <div class="wire">
+    <span class="lbl">MAIN WINDOW</span>
+<pre>
+┌──────────────────────────────────────────────────────────────────────┐
+│ SkyFolder          プロファイル [ fracturelab      ▾ ]   ⚙︎  ⓘ       │
+├──────────────────────────────────────────────────────────────────────┤
+│                                                                      │
+│  ┌────────────────────────────────────────────────────────────────┐ │
+│  │ ● <b>private</b>          flab-stor-private          <span class="g">非公開</span>        │ │
+│  │   ~/SkyFolder/fracturelab/private                                     │ │
+│  │   <span class="g">マウント済み · 1.2 GB キャッシュ · 未送信 0 件</span>              │ │
+│  │                     [ Finder で開く ]  [ アンマウント ]        │ │
+│  └────────────────────────────────────────────────────────────────┘ │
+│                                                                      │
+│  ┌────────────────────────────────────────────────────────────────┐ │
+│  │<span class="a">▌</span>● <b>public</b>           flab-stor-public     <span class="a">公開 · files.fracturelab.dev</span>│ │
+│  │<span class="a">▌</span>  ~/SkyFolder/fracturelab/public                                      │ │
+│  │<span class="a">▌</span>  <span class="a">⚠︎ このバケットの中身は URL を知る誰でも読めます</span>              │ │
+│  │<span class="a">▌</span>  <span class="g">マウント済み · <b>読み取り専用</b> · 340 MB キャッシュ</span>              │ │
+│  │<span class="a">▌</span>  <span class="g">公開するには [ 共有… ] を使ってください</span>                     │ │
+│  │<span class="a">▌</span>                    [ Finder で開く ]  [ アンマウント ]        │ │
+│  └────────────────────────────────────────────────────────────────┘ │
+│                                                                      │
+│  <span class="g">rclone v1.71.0 · rcd 稼働中 (127.0.0.1:52341) · nfsmount</span>            │
+└──────────────────────────────────────────────────────────────────────┘
+</pre>
+  </div>
+  <table>
+    <tr><th style="width:150px">UI 要素</th><th>仕様</th></tr>
+    <tr><td>公開バケットの視覚的分離</td><td><b>左端にアクセントカラー（<code>--accent</code> / R2 オレンジ）の帯を常時表示</b>し、非公開バケットと一目で区別できるようにする。DD-001 D-02 が「バケットを物理分離することで人為ミスを防ぐ」としたのと同じ意図を、UI 上でも二重化する</td></tr>
+    <tr><td>public は読み取り専用</td><td>G-08 により <code>visibility == "public"</code> のバケットは <b>read-only でマウントされる</b>。行に「読み取り専用」バッジを表示し、「公開するには共有ダイアログを使ってください」の導線を置く。<br><code>allowDirectWriteToPublic</code> が true の場合はバッジを<b>赤い「書込み可・Exif 除去が働きません」警告</b>に差し替える</td></tr>
+    <tr><td>マウント状態インジケータ</td><td><code>●</code> の色: 緑 = マウント済み / 灰 = 未マウント / 黄 = 処理中 / 赤 = エラー。<b>状態は 5 秒間隔の <span class="api">mount/listmounts</span> から再構築する</b>（§02 DESIGN INVARIANT）</td></tr>
+    <tr><td>「未送信 N 件」表示</td><td><span class="api">vfs/stats</span> 応答の <code>diskCache.uploadsQueued + diskCache.uploadsInProgress</code>（実測でキー名を確認・M-03）。<b><code>diskCache.erroredFiles</code> が 0 でない場合は別途エラー表示を出す</b>（黙って失敗させない）。<b>DD-001 R-03（保存 ≠ 即クラウド同期）への直接的な回答</b>で、GUI 化の最大の価値のひとつ。0 でないあいだはメニューバーアイコンにもバッジを出す</td></tr>
+    <tr><td>転送速度</td><td><span class="api">core/stats</span> の <code>speed</code>。転送中のみ表示</td></tr>
+    <tr><td>「Finder で開く」</td><td><code>NSWorkspace.shared.open(mountPathURL)</code>。<b>初回マウント成功時のみ</b>、Finder サイドバーへの登録を促すトーストを出す（自動登録は行わない — ユーザーのサイドバーを勝手に変更しない）</td></tr>
+  </table>
+
+  <h3>5.3 共有アクション</h3>
+  <p>
+    共有の起動経路は <b>v1.0 では以下の 2 つに限定する</b>: (a) メイン画面のバケット行へのドラッグ&ドロップ、(b) メニューバーの「共有…」からのファイル選択。いずれも同じダイアログに合流する。
+  </p>
+  <div class="box info">
+    <div class="box-t">SCOPE — Finder の共有メニュー / コンテキストメニューは v1.0 では実装しない</div>
+    <p style="margin-top:4px">
+      Finder への統合（Share Extension・Finder Sync Extension）は <b>App Sandbox が必須</b>であり、G-07（本体は Sandbox 無効）との整合を別途設計する必要がある
+      （拡張だけを Sandbox 有効の別ターゲットにし、App Group 経由で本体と通信する構成になる）。
+      得られる利便性に対して設計・署名・プロセス間通信の複雑度が見合わないため、<b>v1.0 のスコープから外す</b>。
+      v1.1 以降で検討する場合は、拡張ターゲットの設計を本書の改版として起こすこと。
+    </p>
+  </div>
+  <div class="wire">
+    <span class="lbl">SHARE DIALOG</span>
+<pre>
+┌──────────────────────────────────────────────────────────────────────┐
+│  共有 — screenshot 2026.PNG                                          │
+├──────────────────────────────────────────────────────────────────────┤
+│  ● <b>期限付きリンク</b>（非公開のまま・URL を知る人だけ・期限あり） <span class="g">既定</span> │
+│      有効期限 [ 24 時間  ▾ ]    <span class="g">最大 7 日</span>                          │
+│      <span class="g">→ https://{accountId}.r2.cloudflarestorage.com/… の形式になります</span> │
+│                                                                      │
+│  ○ <span class="a"><b>恒久公開</b></span>（公開バケットへ配置・誰でも常時アクセス可）           │
+│      配置先 [ assets ▾ ] / 2026 / <span class="a">screenshot-2026.png</span>                │
+│      → <span class="a">https://files.fracturelab.dev/assets/2026/screenshot-2026.png</span>  │
+│      ☑ 画像のメタデータ（GPS 位置情報など）を除去する  <span class="g">推奨</span>          │
+│      ☐ 長期キャッシュを設定する（変更しないファイル向け）                │
+│                                                                      │
+│  ⚠︎ <span class="a">恒久公開は URL を知る誰でもアクセスできます。取り消しても</span>          │
+│     <span class="a">キャッシュや保存済みリンクからは即座に消えません。</span>                 │
+│                                                                      │
+│                        [ キャンセル ]   [ リンクを作成してコピー ]     │
+│                        <span class="g">※ 恒久公開を選ぶとボタンは「公開して URL をコピー」に変わる</span>
+└──────────────────────────────────────────────────────────────────────┘
+</pre>
+  </div>
+  <table>
+    <tr><th style="width:170px">項目</th><th>仕様</th></tr>
+    <tr><td>slug プレビュー</td><td>入力ファイル名から生成される最終 key を<b>実行前に表示する</b>。slug 規則は DD-001 §8.2 を継承（拡張子を除く部分を小文字化・空白を <code>-</code> に・<code>[^a-z0-9._-]</code> を除去・<b>拡張子も小文字化</b>・結果が空なら <code>file-{unixtime}</code>）</td></tr>
+    <tr><td>メタデータ除去</td><td>対象拡張子（jpg/jpeg/png/tiff/heic/webp、大小文字不問）のときのみチェックボックスを表示。<b>既定 ON</b>。OFF にすると赤字の注意文が展開される（SEC-G03）</td></tr>
+    <tr><td>上書き確認</td><td>同一 key が既に存在する場合（<span class="api">operations/stat</span> で事前確認）、確認ダイアログを挟む。<b>無確認上書きを禁止</b>（DD-001 §8.2 継承）</td></tr>
+    <tr><td><b>既定の選択</b></td><td><b>常に「期限付きリンク」を既定選択にする。</b>恒久公開は明示的に選ばせる。<br>誤操作 1 回で恒久公開が成立してはならない（SEC-G03・CRIT-02 と同じ「危険側に倒さない」原則）。<b>前回の選択を記憶して既定にする実装をしてはならない</b></td></tr>
+    <tr><td>公開の警告文</td><td>恒久公開を選択したときのみ表示。<b>毎回表示し、「今後表示しない」を提供しない</b>。DD-001 §0.5 が「実装者が見落としやすい前提」の筆頭に挙げた項目であり、GUI 化でむしろリスクが上がるため</td></tr>
+  </table>
+
+  <h3>5.4 公開物一覧・取り下げ</h3>
+  <p>DD-001 §8.1 の <code>r2share ls</code> / <code>r2share gone</code> に対応。public バケットの中身を一覧し、公開 URL のコピー・取り下げを行う。</p>
+  <table>
+    <tr><th style="width:150px">操作</th><th>仕様</th></tr>
+    <tr><td>一覧</td><td><span class="api">operations/list</span>（<code>opt.recurse: true</code>）。key / サイズ / 更新日時 / 公開 URL を表示。<code>gone/</code> 配下は既定で非表示</td></tr>
+    <tr><td>URL コピー</td><td><code>{publicBaseURL}/{key}</code> をクリップボードへ</td></tr>
+    <tr><td>取り下げ</td><td><span class="api">operations/movefile</span> で <code>gone/{key}</code> へサーバサイド移動。<b>削除ではない</b>（DD-001 §4.4 RULE: 公開 URL の不変性）。実行後「CDN キャッシュが残るため即座には 404 になりません」と表示</td></tr>
+    <tr><td>四半期棚卸し</td><td><code>gone/</code> 配下の一括削除ボタンを別途用意。DD-001 §4.4 の四半期運用を GUI 化したもの</td></tr>
+  </table>
+
+  <h3>5.5 メニューバー UI（常駐）</h3>
+  <table>
+    <tr><th style="width:150px">状態</th><th>アイコン / 表示</th></tr>
+    <tr><td>全マウント正常・転送なし</td><td>通常アイコン（塗りつぶしなし）</td></tr>
+    <tr><td>転送中</td><td>アイコンにバッジ + メニュー内に速度と残件数</td></tr>
+    <tr><td>未送信キャッシュあり<br>（転送は停止）</td><td><b>警告バッジ</b>。「N 件がまだクラウドに送られていません」。クリックで <span class="api">vfs/refresh</span> による再試行</td></tr>
+    <tr><td>マウント断</td><td>エラーバッジ + 通知（<code>UserNotifications</code>）。「{alias} のマウントが外れました」+ 再マウントボタン</td></tr>
+    <tr><td>rcd 停止</td><td>エラーバッジ。診断画面へのリンク</td></tr>
+  </table>
+  <p>メニュー項目: プロファイル切替 / 各バケットのマウント切替 / Finder で開く / 共有… / 公開物一覧 / 設定… / 診断… / 終了。</p>
+</section>
+
+<section id="s6">
+  <div class="sec-key">r2://spec/gui/06_rc/</div>
+  <h2>06. rclone rcd 制御仕様</h2>
+  <p class="lead">アプリと rclone の唯一の接点。実装者はこの節の呼び出し規約から逸脱してはならない。</p>
+
+  <h3>6.1 rcd の起動</h3>
+  <div class="file-label">RcdSupervisor が組み立てる起動コマンド（概念形）</div>
+<pre><span class="cm">// ---- コマンドライン引数（秘密情報を一切置かない。ps で全ユーザーから可読なため）----</span>
+{app}/Contents/Resources/rclone rcd \
+  --rc-addr <span class="hl">127.0.0.1:0</span> \            <span class="cm">// 0 = 空きポート自動割当。固定ポートを使わない</span>
+  --config <span class="hl">""</span> \                       <span class="cm">// G-04 第 1 案（環境変数注入）では空文字。§4.1 MUST</span>
+  --cache-dir {caches}/{profileId} \    <span class="cm">// §4.1。この直下に rclone が {bucketAlias}/ を作る</span>
+  --log-file {logs}/{profileId}.log \
+  --log-level INFO
+  <span class="cm">// --rc-serve は v1.0 では付けない（確定）。rc ポートでリモート内容の HTTP 配信が</span>
+  <span class="cm">// 有効になり攻撃面が広がるため。プレビュー配信が必要になった時点で改版する</span>
+  <span class="cm">// --config は必ず空文字。設定ファイルは生成しない（U-01 が実測で成立済み）</span>
+
+<span class="cm">// ---- 環境変数（すべての秘密情報はここから注入する）----</span>
+<span class="cm">// rc の認証情報。引数に置かない（SEC-G01 / SEC-G02）</span>
+<span class="hl">RCLONE_RC_USER</span>={random 24 chars}          <span class="cm">// 起動ごとに生成。永続化しない</span>
+<span class="hl">RCLONE_RC_PASS</span>={random 32 chars}          <span class="cm">// 同上</span>
+
+<span class="cm">// リモート定義（G-04 第 1 案。§14.1 U-01 で実機検証）</span>
+RCLONE_CONFIG_R2_TYPE=s3
+RCLONE_CONFIG_R2_PROVIDER=Cloudflare
+RCLONE_CONFIG_R2_ACCESS_KEY_ID={keychain}
+RCLONE_CONFIG_R2_SECRET_ACCESS_KEY={keychain}
+RCLONE_CONFIG_R2_ENDPOINT=https://{accountId}.r2.cloudflarestorage.com
+RCLONE_CONFIG_R2_ACL=private
+RCLONE_CONFIG_R2_NO_CHECK_BUCKET=true   <span class="cm">// DD-001 §6.2: バケット作成権限がないトークンで必須</span>
+
+<span class="cm">// K-02（NFC 正規化）: rclone の --no-unicode-normalization は既定 false のまま維持する。</span>
+<span class="cm">// 環境変数でもフラグでも変更しない。アプリの設定項目としても提供しない。</span>
+<span class="cm">// macOS は NFD を返すことがあり、正規化を切ると同名別ファイルが発生する（DD-001 K-02）</span>
+
+<span class="cm">// グローバル / バックエンドのオプション（mount/mount では渡せない項目。§6.2 注入経路表）</span>
+RCLONE_TRANSFERS={advanced.transfers}                       <span class="cm">// 既定 8</span>
+RCLONE_S3_CHUNK_SIZE={advanced.s3ChunkSizeMB}M              <span class="cm">// 既定 64M</span>
+RCLONE_S3_UPLOAD_CUTOFF={advanced.s3UploadCutoffMB}M        <span class="cm">// 既定 128M</span>
+<span class="cm">// nfs-cache-handle-limit は環境変数で渡さない。既定値が既に 1000000 で</span>
+<span class="cm">// DD-001 §6.3 の指定値と一致する（実測・U-09）。明示したい場合は起動後に</span>
+<span class="cm">// options/set へ {"nfs":{"HandleLimit":1000000}} を送る</span></pre>
+  <div class="box danger">
+    <div class="box-t">MUST — rc API はシェルアクセスと等価</div>
+    <p style="margin-top:4px">
+      rclone 公式が「API へのアクセスはシェルアクセスと同等」と明記している。したがって:
+      <b>(a) <code>--rc-no-auth</code> を使ってはならない</b>、
+      <b>(b) バインドアドレスは <code>127.0.0.1</code> に限定し <code>0.0.0.0</code> にしてはならない</b>、
+      <b>(c) rc-user / rc-pass はプロセス起動ごとの乱数とし、ディスクに書いてはならない</b>。
+      ポートを固定しない（<code>:0</code> で自動割当）のは、同一マシンの他プロセスが待ち構えることを困難にするためでもある。
+      <b>割り当てられた実ポートは <span style="background:#ffe8cc">--log-file が指すログファイル</span>から読み取る</b> — 実測では
+      <code>NOTICE: Serving remote control on http://127.0.0.1:63283/</code> の形式で出力される。
+      <b style="color:#b23">v1.3 まで「stdout ではなく stderr に出る」としていたのは誤りだった（M-12）。</b>
+      それは <code>--log-file</code> を付けずに測った結果で、本節が必須としている <code>--log-file</code> を指定すると
+      <b>stdout も stderr も 0 バイトになる</b>。<b>stdout を読んでも stderr を読んでも永久に待ち続ける。</b>
+      ログファイルは再起動をまたいで追記されるため、<b>起動前のファイルサイズを記録し、そこから後ろだけを走査する</b>こと
+      — さもないと前回起動時の古いポートを掴む（CRIT-03 と同種の事故）。
+    </p>
+  </div>
+  <div class="box warn">
+    <div class="box-t">CAUTION — 環境変数はプロセス一覧から見えない、が漏れうる</div>
+    <p style="margin-top:4px">
+      環境変数は <code>ps</code> のコマンドライン引数と違って一覧に出ないが、<b>同一ユーザー権限のプロセスからは <code>/proc</code> 相当の手段や親プロセス経由で読める場合がある</b>。
+      これは Keychain 保存に比べれば弱い保護であり、「ディスクに平文で残らない」ことが主たる利益である点を正しく理解して実装すること。
+      <b>secret を <code>--rc-*</code> 等のコマンドライン引数に置くことは、いかなる場合も禁止する</b>（引数は <code>ps</code> で全ユーザーから見える）。
+    </p>
+  </div>
+
+  <h3>6.2 マウント操作</h3>
+  <table>
+    <tr><th style="width:150px">操作</th><th style="width:150px">エンドポイント</th><th>パラメータ / 注意</th></tr>
+    <tr>
+      <td>マウント</td><td class="mono">mount/mount</td>
+      <td><code>fs: "r2:{bucketName}"</code>, <code>mountPoint: {展開済み絶対パス}</code>, <code><b>mountType: "nfsmount"</b></code>（CRIT-01・省略禁止）, <code>vfsOpt: {…}</code>, <code>mountOpt: {…}</code>。<br>
+        送る値は <code>buckets[].mountPath</code> の <code>~</code> を展開した絶対パス。<b>戻り値の <code>mountPoint</code> が要求値と異なる場合は戻り値を採用する</b>（詳細は下の RULE）</td>
+    </tr>
+    <tr><td>アンマウント</td><td class="mono">mount/unmount</td><td><code>mountPoint</code>。アプリ終了時は <span class="api">mount/unmountall</span> を呼ぶ</td></tr>
+    <tr><td>状態取得</td><td class="mono">mount/listmounts</td><td>パラメータなし。<code>mountPoints[]</code>（<code>Fs</code> / <code>MountPoint</code> / <code>MountedOn</code>）。<b>5 秒間隔でポーリングし、UI 状態の唯一の情報源とする</b></td></tr>
+    <tr><td>方式の列挙</td><td class="mono">mount/types</td><td>起動時に 1 回。<code>nfsmount</code> の存在確認（E-03）と「詳細設定」の選択肢構成に使う</td></tr>
+  </table>
+
+  <div class="box decide">
+    <div class="box-t">RULE — <code>mountPath</code>（設定値）と <code>mountPoint</code>（実際値）を区別する</div>
+    <p style="margin-top:4px">
+      本書は 2 つの語を意図的に使い分けている。<b>実装者はこの区別を保つこと。</b>
+    </p>
+    <table style="margin-top:12px">
+      <tr><th style="width:150px">語</th><th style="width:130px">出どころ</th><th>意味と用途</th></tr>
+      <tr><td class="mono">mountPath</td><td>profiles.json の<br><code>buckets[].mountPath</code></td><td><b>ユーザーが設定した希望値。</b><code>~</code> 表記を含みうる。設定画面で編集されるのはこちら。<b>永続化されるのはこの値だけ</b></td></tr>
+      <tr><td class="mono">mountPoint</td><td><code>mount/mount</code> の戻り値<br>および <code>mount/listmounts</code></td><td><b>rclone が実際にマウントした絶対パス。</b>UI 表示・「Finder で開く」・アンマウント要求には<b>常にこちらを使う</b>。<b>メモリ上にのみ保持し、profiles.json へ書き戻さない</b></td></tr>
+    </table>
+    <p style="margin-top:10px">
+      <b>乖離したときの扱い</b>: 実際の操作（Finder で開く / アンマウント / stale 判定）はすべて <code>mountPoint</code> を使う。
+      ただし <code>mountPath</code> を書き換えてはならない — ユーザーの設定を、アプリが黙って変更しないため。
+      <b>乖離が生じている間は、メイン画面のバケット行に実際のパスを併記する</b>（「設定: ~/SkyFolder/… / 実際: /Users/…」）。
+      これは §02 DESIGN INVARIANT（マウント状態の真実は <code>listmounts</code> の応答）の当然の帰結である。
+    </p>
+  </div>
+
+  <h4>vfsOpt / mountOpt の値（DD-001 §6.3 のフラグを JSON に写像）</h4>
+<pre>"vfsOpt": {
+  "CacheMode":          <span class="hl">"full"</span>,        <span class="cm">// D-05。固定</span>
+  "CacheMaxSize":       10737418240,   <span class="cm">// advanced.vfsCacheMaxSizeGB × 1024^3</span>
+  "CacheMaxAge":        259200000000000, <span class="cm">// 72h（ナノ秒）</span>
+  "WriteBack":          15000000000,   <span class="cm">// advanced.vfsWriteBackSec（ナノ秒）</span>
+  "ChunkSize":          16777216,      <span class="cm">// 16M</span>
+  "ChunkSizeLimit":     536870912,     <span class="cm">// 512M</span>
+  "DirCacheTime":       60000000000,   <span class="cm">// 60s（ナノ秒）。60 未満禁止</span>
+  "PollInterval":       0,             <span class="cm">// S3 は変更通知非対応（DD-001 §6.3）</span>
+  <span class="hl">"ReadOnly"</span>:           true           <span class="cm">// G-08。visibility=="public" のバケットにのみ true。</span>
+                                       <span class="cm">// private は false。advanced.allowDirectWriteToPublic</span>
+                                       <span class="cm">// が true の場合のみ public でも false にする</span>
+},
+"mountOpt": {
+  "VolumeName":         "SkyFolder-{alias}",  <span class="cm">// nfsmount では無視される場合がある（DD-001 F-08）</span>
+  "AttrTimeout":        5000000000     <span class="cm">// 5s</span>
+}</pre>
+  <h4>設定項目の注入経路（§4.2 advanced の各項目がどこへ渡るか）</h4>
+  <p>
+    <b><code>mount/mount</code> の <code>vfsOpt</code> / <code>mountOpt</code> で渡せるのは VFS とマウントの設定に限る。</b>
+    S3 バックエンドの設定とグローバル設定は別経路になるため、実装者はこの表に従って振り分けること。
+  </p>
+  <table>
+    <tr><th style="width:190px">advanced の項目</th><th style="width:150px">注入経路</th><th>キー</th></tr>
+    <tr><td class="mono">vfsCacheMode / vfsCacheMaxSizeGB /<br>vfsWriteBackSec / dirCacheTimeSec /<br>vfsReadChunkSizeMB</td><td><code>mount/mount</code> の <code>vfsOpt</code></td><td class="mono">CacheMode / CacheMaxSize / WriteBack / DirCacheTime / ChunkSize</td></tr>
+    <tr><td class="mono">（AttrTimeout / VolumeName）</td><td><code>mount/mount</code> の <code>mountOpt</code></td><td class="mono">AttrTimeout / VolumeName</td></tr>
+    <tr><td class="mono">transfers</td><td><b>環境変数</b>（§6.1）</td><td class="mono">RCLONE_TRANSFERS</td></tr>
+    <tr><td class="mono">s3ChunkSizeMB</td><td><b>環境変数</b></td><td class="mono">RCLONE_S3_CHUNK_SIZE</td></tr>
+    <tr><td class="mono">s3UploadCutoffMB</td><td><b>環境変数</b></td><td class="mono">RCLONE_S3_UPLOAD_CUTOFF</td></tr>
+    <tr><td class="mono">（nfs-cache-handle-limit）</td><td><b>指定不要</b><br>（既定が 1000000）</td><td class="mono">明示するなら options/set<br>{"nfs":{"HandleLimit":1000000}}</td></tr>
+    <tr><td class="mono">excludes</td><td><code>_filter</code> パラメータ（§6.3）</td><td class="mono">ExcludeRule</td></tr>
+  </table>
+  <div class="box info">
+    <div class="box-t">RESOLVED — <code>--nfs-cache-handle-limit</code> は指定不要（実測）</div>
+    <p style="margin-top:4px">
+      DD-001 §6.3 は <code>--nfs-cache-handle-limit 1000000</code> を変更禁止フラグとして列挙しているが、
+      <b>rclone v1.75.0 の既定値が既に 1000000 であり、DD-001 の指定値と一致している</b>
+      （<span class="api">options/get</span> の <code>nfs</code> ブロックで確認）。したがって<b>明示指定は不要</b>。<br>
+      将来のバージョンで既定値が変わった場合に備えて明示したい場合は、環境変数ではなく
+      <b>起動後に <span class="api">options/set</span> へ <code>{"nfs":{"HandleLimit":1000000}}</code> を送る</b>
+      （実測で反映を確認済み）。同梱バージョンを固定する運用（R-G06）とあわせれば、既定値の変化に不意打ちされることはない。
+    </p>
+  </div>
+  <div class="box warn">
+    <div class="box-t">CAUTION — 時間・サイズ系は「ナノ秒 / バイト」の数値</div>
+    <p style="margin-top:4px">
+      CLI では <code>--vfs-write-back 15s</code> のような人間可読の文字列だが、<b>RC API の <code>vfsOpt</code> は Go の <code>fs.Duration</code>（ナノ秒整数）・<code>fs.SizeSuffix</code>（バイト整数）にデシリアライズされる</b>。
+      文字列を渡してよいかは rclone のバージョンで挙動が異なりうるため、<b>数値で渡す実装を既定とし、P1 で実機の受理形式を確認して固定する</b>（§14.1 U-02）。
+    </p>
+  </div>
+
+  <h3>6.3 除外パターン（.DS_Store 対策）</h3>
+  <p>
+    DD-001 K-04 / §6.4 の二重防御をそのまま継承する。
+  </p>
+  <ul class="plain">
+    <li><b>第 1 層</b>: rc 呼び出しに <code>_filter</code> パラメータで <code>ExcludeRule</code> を渡す（<code>.DS_Store</code>, <code>._*</code>, <code>.Spotlight-V100/**</code>, <code>.Trashes/**</code>）</li>
+    <li><b>第 2 層</b>: <code>defaults write com.apple.desktopservices DSDontWriteNetworkStores -bool true</code> 相当を、<b>アプリが勝手に書き換えるのではなく</b>「診断」画面で現在値を表示し、ユーザーの明示操作で設定するボタンを提供する。<b>反映にはログアウトが必要</b>である旨を併記する</li>
+    <li>第 1 層のみに依存しないこと。DD-001 R-10（exclude 対象への書込み拒否が Finder の権限エラーとして散発表示されうる）が発生した場合の対処は §13 R-G05</li>
+  </ul>
+
+  <h3>6.4 統計ポーリング</h3>
+  <table>
+    <tr><th style="width:140px">エンドポイント</th><th style="width:90px">間隔</th><th>用途</th></tr>
+    <tr><td class="mono">mount/listmounts</td><td class="c">5 秒</td><td>マウント状態の唯一の情報源。差分が出たら UI 更新 + 断の場合は通知</td></tr>
+    <tr><td class="mono">core/stats</td><td class="c">1 秒<br><span class="g">（転送中のみ）</span></td><td>速度・転送バイト数・エラー数。転送が 0 になったら 5 秒間隔へ落とす</td></tr>
+    <tr><td class="mono">vfs/stats</td><td class="c">5 秒</td><td>未アップロード項目数・キャッシュ使用量。<b>「未送信 N 件」表示の根拠</b>。<br>応答の <code>diskCache</code> ブロックに <code>uploadsQueued</code> / <code>uploadsInProgress</code> / <code>bytesUsed</code> / <code>files</code> / <code>erroredFiles</code> / <code>outOfSpace</code> がある（実測・M-03）</td></tr>
+  </table>
+  <p>
+    <b>状態変更をまたいだ応答は破棄する（MUST）</b>: アンマウント等の状態変更操作を発行した時刻より<b>前に開始された</b>ポーリング応答が、
+    操作の完了後に到着することがある。これをそのまま描画すると <b>UI が一瞬「マウント済み」に戻る</b>。
+    各ポーリング要求に開始時刻（または単調増加のシーケンス番号）を持たせ、
+    <b>直近の状態変更操作より古い応答は捨てる</b>。§02 の DESIGN INVARIANT は「listmounts の応答が真実」と述べているが、
+    それは<b>最新の応答</b>についてであり、古い応答まで信じてよいという意味ではない。
+  </p>
+  <p>
+    <b>ポーリングはアプリがフォアグラウンドまたはメニューが開いている間のみ、上表の高頻度で行う。</b>
+    バックグラウンド時は間隔を延ばして CPU 消費を抑える。具体値は次のとおり（実装者はこの表の値をそのまま使うこと）:
+  </p>
+  <table>
+    <tr><th style="width:180px">エンドポイント</th><th style="width:150px">フォアグラウンド</th><th>バックグラウンド</th></tr>
+    <tr><td class="mono">mount/listmounts</td><td class="c">5 秒</td><td class="c"><b>15 秒</b>（断検知のため、他より短く保つ）</td></tr>
+    <tr><td class="mono">core/stats</td><td class="c">1 秒（転送中のみ）</td><td class="c">30 秒</td></tr>
+    <tr><td class="mono">vfs/stats</td><td class="c">5 秒</td><td class="c">30 秒</td></tr>
+  </table>
+  <p>
+  </p>
+
+  <h3>6.5 非同期ジョブ</h3>
+  <p>
+    大きなファイルのアップロード・コピー・移動は <code>_async: true</code> を付けて発行し、返る <code>jobid</code> を <span class="api">job/status</span> でポーリングする（1 秒間隔）。
+    完了・失敗は UI のトーストと（アプリが背面なら）通知で伝える。
+    <b>マウント操作（<code>mount/mount</code>）は同期で呼ぶ</b> — 失敗を即座にユーザーへ返す必要があり、かつ処理が短いため。
+  </p>
+</section>
+
+<section id="s7">
+  <div class="sec-key">r2://spec/gui/07_share/</div>
+  <h2>07. 共有 URL 発行仕様</h2>
+  <p class="lead">DD-001 §8 の <code>r2share</code> CLI 4 サブコマンドを GUI アクションへ写像したもの。挙動の規約は CLI 版を継承する。</p>
+
+  <h3>7.1 CLI からの写像表</h3>
+  <table>
+    <tr><th style="width:150px">DD-001 の CLI</th><th style="width:150px">GUI アクション</th><th>実装</th></tr>
+    <tr><td class="mono">r2share tmp &lt;file&gt;</td><td>共有 &gt; 期限付きリンク</td><td>ファイルが private バケット上にある場合はそのまま <span class="api">operations/publiclink</span>。ローカルファイルの場合は先に <code>share-staging/{YYYYMMDD}/</code> へアップロードしてから発行</td></tr>
+    <tr><td class="mono">r2share pub &lt;file&gt;</td><td>共有 &gt; 恒久公開</td><td>Exif 除去（§7.3）→ <span class="api">operations/copyfile</span> → <code>{publicBaseURL}/{key}</code> を組み立て。<br><b>Finder へのコピーによる公開経路は存在しない</b>（G-08 により public は read-only）。公開は必ずこの経路を通る</td></tr>
+    <tr><td class="mono">r2share ls</td><td>公開物一覧（§5.4）</td><td><span class="api">operations/list</span>（recurse）</td></tr>
+    <tr><td class="mono">r2share gone &lt;key&gt;</td><td>公開物一覧 &gt; 取り下げ</td><td><span class="api">operations/movefile</span> で <code>gone/{key}</code> へ</td></tr>
+  </table>
+
+  <div class="box decide">
+    <div class="box-t">RULE — 共有先バケットの解決規則</div>
+    <p style="margin-top:4px">
+      プロファイルは複数のバケットを持ちうるため、共有アクションがどのバケットを使うかを一意に決める規則が必要になる。
+      <b>実装者はこの規則から逸脱してはならない。</b>
+    </p>
+    <table style="margin-top:12px">
+      <tr><th style="width:150px">場面</th><th>解決規則</th></tr>
+      <tr><td><b>恒久公開の宛先</b></td><td><code>visibility == "public"</code> かつ <code>publicBaseURL</code> が設定済みで、<b>かつ §4.4 手順 5（公開 URL の到達性検証）を通過している</b>バケット。<br>
+        <b>手順 5 が未通過（「公開 URL 未確認」状態）のバケットは解決対象から除外する</b> — E-13 の「恒久公開の機能は無効化」と条件を一致させるため。除外の結果 0 個になった場合は下記「該当が 0 個」と同じ扱いにする。<br><b>該当が 1 個</b>: それを使う（選択 UI を出さない）。<br><b>該当が 2 個以上</b>: 共有ダイアログに宛先バケットのセレクタを表示し、<b>直近に使ったものを既定選択</b>とする。<br><b>該当が 0 個</b>: 恒久公開のラジオボタンを無効化し、E-10 を表示する</td></tr>
+      <tr><td><b>期限付き共有の staging 先</b></td><td>対象ファイルが<b>すでにいずれかのバケット上にある場合はコピーせず</b>、そのバケットに対して <span class="api">operations/publiclink</span> を発行する（public バケット上のファイルでも presigned は発行できる）。<br>ローカルファイルの場合は <code>visibility == "private"</code> のバケットの <code>share-staging/{YYYYMMDD}/</code> へアップロードする。<br><b>private が 2 個以上</b>: 宛先セレクタを表示（既定は直近使用）。<br><b>private が 0 個</b>: 期限付き共有のラジオボタンを無効化し、「期限付き共有には非公開バケットが必要です」を表示する</td></tr>
+      <tr><td><b>公開物一覧の対象</b></td><td>恒久公開の宛先と同じ解決規則。2 個以上ある場合は画面上部にバケット切替タブを置く</td></tr>
+    </table>
+    <p style="margin-top:10px">
+      <b>プロファイルは public / private を各 0 個でも保存できる</b>（マウント専用の使い方を許容するため）。
+      その場合に無効化される機能を、設定画面のバケット行に注記として表示する。
+    </p>
+  </div>
+
+  <h3>7.2 期限付きリンク（presigned URL）</h3>
+  <table>
+    <tr><th style="width:130px">項目</th><th>仕様</th></tr>
+    <tr><td>呼び出し</td><td><span class="api">operations/publiclink</span> — <code>fs: "r2:{bucketName}"</code>, <code>remote: "{key}"</code>, <code>expire: "24h"</code>。戻り値 <code>url</code></td></tr>
+    <tr><td>既定期限</td><td>24 時間（<code>share.defaultExpire</code>）。UI の選択肢: 1h / 6h / 24h / 3d / 7d + 任意入力</td></tr>
+    <tr><td>上限</td><td><b>7 日（604800 秒）</b>。超過入力は<b>アプリ側のバリデーションで拒否</b>し、恒久公開への誘導文を表示（DD-001 §8.2 継承）。<br>
+      <b>アプリ側で拒否しなければならない理由（ソースで確認・M-11）</b>: rclone の S3 バックエンドは上限超過を<b>エラーにせず、黙って 7 日に切り詰める</b>
+      （<code>if expire &gt; maxExpireDuration { fs.Logf(...); expire = maxExpireDuration }</code>）。
+      <b>切り詰めはログに出るだけで、RC API の呼び出し側にはエラーが返らない。</b>
+      したがってアプリが検証しないと、<b>ユーザーは「8 日で発行できた」と誤認したまま 7 日で切れる URL を配ることになる</b></td></tr>
+    <tr><td>ホスト</td><td><code>{accountId}.r2.cloudflarestorage.com</code> 固定。<b>カスタムドメインでは presigned を使えない</b>（R2 の仕様・DD-001 D-04 / R-05）。URL 表示欄にこの旨を注記する</td></tr>
+    <tr><td>失効</td><td><b>発行後の無効化は不可</b>。UI に「発行済みリンクの取り消しはできません。無効にするにはファイル名を変更してください」と明示する。<br>
+      <b>CAUTION — <code>unlink</code> パラメータを使ってはならない（M-11）</b>: <span class="api">operations/publiclink</span> には <code>unlink</code> 引数があるが、
+      <b>S3 バックエンドの実装では受け取るだけで一度も使われていない</b>（<code>func (f *Fs) PublicLink(ctx, remote, expire, unlink bool)</code> の本体に <code>unlink</code> の出現が 0 回であることをソースで確認）。<br>
+      <b>エラーも返らないため、「unlink で失効させられた」と誤認する導線になる。</b>
+      presigned URL は署名がローカル計算で完結しサーバ側に状態を持たないため、原理的に取り消せない。
+      <b>アプリは <code>unlink</code> を送らない</b>し、失効機能として実装してもならない</td></tr>
+    <tr><td><b>再コピー</b></td><td><b>提供しない。</b>SEC-G05 により URL 文字列を保存しないため、クリップボードを失った場合は<b>再発行する</b>。<br>再発行は同一オブジェクトに対して安全である（署名はローカル計算で、発行のたびに新しい期限の URL が得られる。既存の URL は無効化されない）。<b>「履歴から再コピー」機能を実装してはならない</b> — 実装するには URL の保存が必要になり SEC-G05 に反する</td></tr>
+    <tr><td>対象</td><td><b>ファイルのみ。ディレクトリは共有できない</b> — 末尾が <code>/</code> の remote には <code>fs.ErrorCantShareDirectories</code> が返る（ソースで確認・M-11）。<br>
+      UI ではフォルダを共有対象として選べないようにし、選ばれた場合は「フォルダは共有できません。ファイルを選んでください」を表示する</td></tr>
+    <tr><td>メタデータ</td><td><b>Exif 除去を行わない</b>（DD-001 §8.3 継承: 受け渡し先で原本が必要なユースケースを想定）。ダイアログにその旨を小さく表示する</td></tr>
+    <tr><td><b>staging の掃除</b></td><td>ローカルファイルの共有で <code>share-staging/{YYYYMMDD}/</code> へアップロードしたオブジェクトは、<b>日付 prefix が 14 日以上前になったら自動削除する</b>（起動時に 1 回、prefix を走査して判定）。<br>
+      <b>判定に発行履歴を使わない</b>のは、履歴が直近 50 件しかなく、51 件目以降・再インストール後・別マシンからは期限が取得できないため。<b>日付 prefix だけで自己完結する判定にする。</b><br>
+      14 日の根拠: presigned の最大期限 7 日 + 猶予 7 日。放置すると <code>gone/</code> と同じくストレージ課金が滞留する（R-G09 と同種の問題）。<b>§5.4 の棚卸し UI にも <code>share-staging/</code> の合計サイズを表示する</b></td></tr>
+    <tr><td>発行履歴</td><td>ローカルに直近 50 件を記録する。<b>記録する項目は key・発行時刻・期限の 3 つのみ</b>。<b>URL 文字列は保存しない</b>（SEC-G05）— 保存すると、失効前の署名付き URL がディスク上に残り再配布経路になるため</td></tr>
+  </table>
+
+  <h3>7.3 恒久公開</h3>
+  <h4>処理順序（この順序を変えてはならない）</h4>
+  <table>
+    <tr><th style="width:50px">順</th><th style="width:190px">処理</th><th>失敗時</th></tr>
+    <tr><td class="c">1</td><td>key の組み立て（<code>publicKeyTemplate</code> + slug 化）</td><td>slug が空 → <code>file-{unixtime}</code> にフォールバック</td></tr>
+    <tr><td class="c">2</td><td><span class="api">operations/stat</span> で既存 key の衝突確認</td><td>存在する → 上書き確認ダイアログ。<b>無確認上書き禁止</b></td></tr>
+    <tr><td class="c">3</td><td><b>Exif 除去</b>（対象拡張子かつ <code>stripImageMetadata: true</code> のとき）。<b>一時ディレクトリの複製に対して行い、原本は変更しない</b></td><td>除去に失敗 → <b>アップロードを中止</b>。DD-001 §8.3 の「警告のみで続行しない」を継承</td></tr>
+    <tr><td class="c">4</td><td><span class="api">operations/copyfile</span>（<code>_async: true</code>）。<code>immutableCacheControl</code> が true なら <code>Cache-Control: public, max-age=31536000, immutable</code> をヘッダ付与<br><b style="color:#b23">v1.3 まで <code>operations/uploadfile</code> としていたのは誤りだった（M-13）。</b><code>uploadfile</code> は multipart/form-data で、<code>_async</code> を form field で渡しても<b>jobid を返さず同期実行される</b>ため、<code>job/status</code> でのポーリングができず<b>G4 の AC「ジョブの完了を待ってから URL をコピーする」が成立しない</b>。<code>copyfile</code> は <code>_async</code> で jobid を返し <code>_config.UploadHeaders</code> も受理する。ローカル側にも名前付きリモートが要るので <code>RCLONE_CONFIG_LOCAL_TYPE=local</code> を環境変数に追加する（秘密情報を含まないので SEC-G01/G02 に影響しない）</td><td>ジョブ失敗 → 一時ファイルを削除し、エラー内容を表示</td></tr>
+    <tr><td class="c">5</td><td>一時ディレクトリの削除</td><td>—（失敗しても致命的でない。ログのみ）</td></tr>
+    <tr><td class="c">6</td><td><code>{publicBaseURL}/{key}</code> を組み立て、クリップボードへ</td><td>—</td></tr>
+  </table>
+
+  <h4>7.3.1 slug 規則（DD-001 §8.2 を逐語継承）</h4>
+<pre><span class="cm">// 例: "Logo Final.PNG" → "logo-final.png"</span>
+1. 拡張子を分離する
+2. ベース名を小文字化
+3. 空白を "-" に置換
+4. [^a-z0-9._-] を除去
+5. 拡張子も小文字化する          <span class="cm">// DD-001 F-07 の指摘事項。省略しないこと</span>
+6. 結果のベース名が空なら "file-{unixtime}"</pre>
+
+  <h3>7.4 画像メタデータ除去（SEC-G03 の実装）</h3>
+  <table>
+    <tr><th style="width:130px">項目</th><th>仕様</th></tr>
+    <tr><td>対象拡張子</td><td><code>jpg jpeg png tiff heic webp</code>（大小文字不問）。対象外は無加工でアップロード</td></tr>
+    <tr><td>実装</td><td><b>ImageIO</b>（G-06）。<code>CGImageSourceCreateWithURL</code> → プロパティ辞書を取得 → 下記を除去 → <code>CGImageDestinationCreateWithURL</code> で再書き出し</td></tr>
+    <tr><td><b>除去</b>する</td><td><code>kCGImagePropertyGPSDictionary</code>（GPS 位置情報）/ <code>kCGImagePropertyExifDictionary</code>（撮影日時・機材・シリアル）/ <code>kCGImagePropertyExifAuxDictionary</code> / <code>kCGImagePropertyIPTCDictionary</code> / <code>kCGImagePropertyTIFFDictionary</code> のうち Make・Model・Software</td></tr>
+    <tr><td><b>保持</b>する</td><td><b><code>kCGImagePropertyOrientation</code>（回転情報）</b>と <b>ICC カラープロファイル</b>。<br>DD-001 F-16: これを剥がすと公開画像が横倒し・色崩れで表示される。<b>この 2 つの保持は必須要件である</b></td></tr>
+    <tr><td>品質</td><td><code>kCGImageDestinationLossyCompressionQuality = 1.0</code>。JPEG は再エンコードのため厳密には非可逆（G-06 CAUTION）</td></tr>
+    <tr><td>原本</td><td><b>変更しない</b>。処理は <code>FileManager.default.temporaryDirectory</code> 配下の複製に対して行い、完了後に削除する</td></tr>
+    <tr><td>オプトアウト</td><td>ダイアログのチェックボックスを OFF にすることでのみ可能。<b>「今後表示しない」形の永続オプトアウトを提供しない</b></td></tr>
+  </table>
+
+  <div class="box decide">
+    <div class="box-t">CRIT-02 — 除去を迂回する経路を、検知ではなく構造で塞ぐ</div>
+    <p style="margin-top:4px">
+      DD-001 §0.5 は「Finder で public へ直置きすると Exif 除去が働かない」ことを最大の運用リスクとして挙げていた。
+      本アプリは public バケットも Finder にマウントするため、素朴に作るとこの経路は<b>CLI 版より手軽になってしまう</b>。
+      したがって <b>G-08 により public を read-only でマウントし、書込み経路そのものを無くす</b>。
+    </p>
+    <ul class="plain" style="margin-top:8px">
+      <li><b>結果</b>: 公開は必ず共有ダイアログを通るため、<b>slug 化・上書き確認・メタデータ除去のいずれも迂回できない</b>。検知機構は不要になる</li>
+      <li><b>例外</b>: <code>allowDirectWriteToPublic</code>（既定 false）を true にした場合のみ public が書込み可になる。<b>この設定を有効にしたときだけ</b>、直置きによる Exif 未除去公開が起こりうる</li>
+      <li><b>例外時の緩和（v1.1 以降の検討事項）</b>: <code>allowDirectWriteToPublic</code> が true のときに限り、FSEvents による直置き検知と是正を提供する。ただし <b>FSEvents が localhost NFS 上で発火するかは未検証（U-07）</b>であり、かつ検知はアップロード完了後に働くため原本が公開される時間窓を消せない。<b>この機能を v1.0 の安全性の根拠にしてはならない</b> — 根拠は read-only マウントそのものである</li>
+      <li><b>設定画面での表示</b>: <code>allowDirectWriteToPublic</code> のトグルには「有効にすると、Finder から公開バケットへ直接置いたファイルの位置情報が除去されません」という赤字の説明を常時表示する</li>
+    </ul>
+  </div>
+</section>
+
+<section id="s8">
+  <div class="sec-key">r2://spec/gui/08_lifecycle/</div>
+  <h2>08. プロセス・ライフサイクル管理と冪等性</h2>
+  <p class="lead">DD-001 §6.4 の launchd 常駐を、アプリ自身による監視へ置き換える。CLI 版で問題になった「Finder で取り出すと自動復帰しない」という挙動も、ここで再設計する。</p>
+
+  <h3>8.1 起動シーケンス</h3>
+<pre>0. <span class="hl">rcd の重複を防ぐ</span>（CRIT-03 / §8.6.2）
+   a. NSRunningApplication で先行インスタンスを検出 → あれば前面に出して自分は終了
+   b. rcd.pid を読み、前回の孤児プロセスが居れば
+      <span class="hl">実行パスを照合（proc_pidpath が同梱バイナリと一致するか）→ SIGTERM → 5s → SIGKILL</span> で回収する
+      <span class="cm">// mount/unmountall は呼べない — 孤児の rc-user/rc-pass は失われており</span>
+      <span class="cm">// RC API は 401 を返す（SEC-G01 が認証情報を永続化しないため）。</span>
+      <span class="cm">// SIGTERM だけでマウントも自動解除される（M-08 で実測）。詳細は §8.6.2 (b)</span>
+   c. 前回のプローブ .skyfolder-probe-* が残っていれば掃除（失敗扱いにしない）
+   <span class="cm">// 手順 0〜8 は「前回どこで落ちたか」を問わず毎回すべて実行する。</span>
+   <span class="cm">// 途中再開のための進捗記録を持たない（その記録自体が壊れうる）</span>
+1. profiles.json 読込・スキーマバージョン検証
+2. Keychain から activeProfile の認証情報を取得
+   └─ 失敗（項目なし / ユーザーが拒否）→ 設定画面へ誘導して停止
+3. 同梱 rclone のバージョン確認（<span class="hl">rclone version</span>）→ v1.68 未満なら E-02
+4. rcd 起動（§6.1）→ <span class="hl">--log-file が指すログファイル</span> から実ポートを取得
+   → <span class="hl">rcd.pid に PID とポートを書く</span>（次回起動時の手順 0-b が使う）
+   <span class="cm">// "Serving remote control on http://127.0.0.1:{port}/" を正規表現で拾う。</span>
+   <span class="cm">// stdout でも stderr でもない（M-12・実測）。--log-file を付けると両方とも空になる。</span>
+   <span class="cm">// 起動前のログファイルのサイズを記録し、そこから後ろだけを走査すること</span>
+   <span class="cm">// （しないと前回起動時の古いポートを掴む）</span>
+   └─ 10 秒以内に待受開始しなければ E-01
+5. <span class="api">mount/types</span> → nfsmount の存在確認 → 無ければ E-03（マウント機能を無効化）
+6. <span class="api">mount/listmounts</span> → この rcd が管理するマウントの把握
+   <span class="cm">// 起動直後なので通常は空。前回異常終了で OS 側に残った残骸は</span>
+   <span class="cm">// ここには現れない — その検出は §8.4 の getmntinfo(3) が担当する</span>
+7. autoMount=true のバケットを順にマウント
+8. ポーリング開始（§6.4）</pre>
+
+  <h3>8.2 マウント断への対応（DD-001 §6.4 CAUTION の再設計）</h3>
+  <p>
+    CLI 版は <code>KeepAlive.SuccessfulExit=false</code> により「Finder で取り出した場合（exit 0）は復帰しない」設計だった。
+    これは意図的な取り出しを尊重する一方、<b>ユーザーには「なぜか戻らない」ように見えるという欠点</b>があった。GUI では意図を確認できるため、以下に変更する。
+  </p>
+  <table>
+    <tr><th style="width:180px">断の種類</th><th>検知</th><th>挙動</th></tr>
+    <tr><td>ユーザーがアプリから<br>アンマウントした</td><td>アプリ自身の操作</td><td>再マウントしない。UI 上は「未マウント」。<code>autoMount</code> の値は変更しない（次回起動時は再びマウントされる）</td></tr>
+    <tr><td>Finder / コマンドで<br>手動アンマウントされた</td><td><code>listmounts</code> の差分</td><td><b>自動再マウントしない。</b>通知で「{alias} のマウントが外れました」+ <b>「再マウント」ボタン</b>を提示する。<br>意図的な取り出しを尊重しつつ、CLI 版の「復帰方法が分からない」問題を解消する</td></tr>
+    <tr><td>rcd プロセスが死亡</td><td>子プロセスの終了検知</td><td><b>自動再起動</b>（指数バックオフ: 1s / 2s / 4s / 8s / 16s、5 回で断念）。再起動後は <code>autoMount</code> のバケットを再マウント。5 回失敗したら E-01 として診断画面へ誘導</td></tr>
+    <tr><td>ネットワーク断</td><td><code>core/stats</code> のエラー増加</td><td>マウントは維持する（rclone の VFS が吸収する）。UI に「オフライン」バッジ。復帰時は <span class="api">vfs/refresh</span> を 1 回実行</td></tr>
+  </table>
+
+  <h3>8.3 終了シーケンス</h3>
+  <div class="box warn">
+    <div class="box-t">CAUTION — 未送信データの保護</div>
+    <p style="margin-top:4px">
+      DD-001 R-03 が指摘するとおり、VFS write-back により<b>「保存済みに見えるがまだクラウドに無い」データが常時存在しうる</b>。
+      アプリ終了時にこれを無視して rcd を殺すと、そのデータは失われる。したがって:
+    </p>
+    <ul class="plain" style="margin-top:8px">
+      <li>終了要求時にまず <span class="api">vfs/stats</span> を確認する</li>
+      <li><b>ダーティ項目が 0 でない場合、終了を保留し</b>「未送信のファイルが N 件あります」ダイアログを出す。選択肢は「送信完了を待つ（推奨）」「そのまま終了（データが失われる可能性があります）」</li>
+      <li>「待つ」を選んだ場合、進捗を表示しながら 0 になるまで待機（上限 5 分。超過したら再度選択を求める）</li>
+      <li>ダーティ 0 を確認後: <span class="api">mount/unmountall</span> → rcd に <code>SIGTERM</code> → 5 秒待って終了しなければ <code>SIGKILL</code></li>
+      <li><b>システムのログアウト・シャットダウン時も同じ判定を行う</b>（<code>NSApplicationDelegate</code> の終了通知をフックする）。ただし OS の強制終了タイムアウトがあるため、待機は最大 20 秒に短縮する</li>
+    </ul>
+  </div>
+
+  <h3>8.4 stale mount の掃除</h3>
+  <p>
+    前回の異常終了で残ったマウントポイントは、次回のマウントを失敗させる（DD-001 F-04 と同じ問題）。マウント実行前に必ず以下を行う:
+  </p>
+<pre>1. <span class="api">mount/listmounts</span> に当該 mountPoint が含まれる → <span class="api">mount/unmount</span> を先に実行
+2. 含まれないが OS 側ではマウント状態（<span class="hl">getmntinfo(3)</span> で確認）
+   → rcd の管理外の残骸。原則として<b>アプリからは umount せず</b>、E-04 として
+     ユーザーに手動解除（Finder で取り出す）を案内する
+   <span class="hl">【例外】</span>手順 0-b で回収した孤児 rcd（実行パス照合で「自分が起動したもの」と
+     特定済み）が残したマウントは、<b>自分由来と断定できるためアプリから umount してよい</b>。
+     <span class="cm">// この例外がないと、SIGKILL まで行った場合に E-04 の手動解除案内が出てしまい、</span>
+     <span class="cm">// T-G34 の期待「再起動でマウントが正常に復帰する」と矛盾する</span>
+3. mountPoint のディレクトリが存在しない → 作成（<span class="hl">0700</span>）
+4. mountPoint が存在し、かつ<b>空でない</b> → V-04 違反。マウントを中止し E-05</pre>
+
+  <h3>8.5 ログイン時起動</h3>
+  <table>
+    <tr><th style="width:150px">項目</th><th>仕様</th></tr>
+    <tr><td>実装</td><td><code>SMAppService.mainApp.register()</code> / <code>.unregister()</code>。設定画面のトグルで制御</td></tr>
+    <tr><td>既定</td><td><b>OFF</b>。オンボーディング完了時に「ログイン時に自動で起動しますか？」と 1 回だけ尋ねる</td></tr>
+    <tr><td>可視性</td><td>ユーザーは「システム設定 &gt; 一般 &gt; ログイン項目」から確認・無効化できる。<b>launchd plist を直接書かない</b>（DD-001 §6.4 からの変更点。ユーザーが OS の UI から制御できることを優先する）</td></tr>
+    <tr><td>起動時の挙動</td><td>ウィンドウを開かず、メニューバーのみで常駐する</td></tr>
+  </table>
+
+  <h3>8.6 冪等性の設計（実測に基づく）</h3>
+  <p class="lead">
+    DD-001 §6.2 は「rclone config の対話は使わず設定ファイルを直接配置する（<b>冪等・再現可能にするため</b>）」と、冪等性を明示的な設計目標に掲げていた。
+    GUI では<b>同じ操作がユーザーの手で何度も繰り返される</b>（ボタンの二度押し、自動再マウントとユーザー操作の競合、クラッシュ後の再起動）ため、
+    この要求は CLI 版より強くなる。本節は <b>rclone v1.75.0 での実測</b>に基づき、どの操作が冪等でどれが冪等でないかを確定させる。
+  </p>
+
+  <div class="box decide">
+    <div class="box-t">PRINCIPLE — 「操作」ではなく「望む終了状態」に対して冪等にする</div>
+    <p style="margin-top:4px">
+      本アプリのすべての状態遷移は<b>宣言的に書く</b>。「マウントする」ではなく「<b>マウントされている状態にする</b>」、
+      「アンマウントする」ではなく「<b>マウントされていない状態にする</b>」を実装の単位とする。<br>
+      <b>したがって「すでにその状態である」ことを示すエラーは、失敗ではなく成功として扱う。</b>
+      これを守らないと、ボタンの二度押し・自動再マウントとの競合・再起動直後の操作が、すべてエラーダイアログになる。
+    </p>
+  </div>
+
+  <h4>8.6.1 RC API の冪等性（実測値）</h4>
+  <table>
+    <tr><th style="width:190px">操作</th><th style="width:80px">冪等性</th><th>実測結果とアプリ側の扱い</th></tr>
+    <tr>
+      <td class="mono">mount/mount<br><span class="g">（同一 mountPoint に 2 回）</span></td>
+      <td class="c"><b>状態 ✅<br>応答 ❌</b></td>
+      <td>2 回目は <code>failed to mount FUSE fs: mount: localhost:/ is already mounted at {path}: failed to mount NFS volume: <b>exit status 78</b></code> を返す。
+        <b>ただし <span class="api">mount/listmounts</span> は 1 件のままで二重登録は起きない</b>（状態としては冪等）。<br>
+        <b>アプリ側の扱い（MUST）</b>: エラー本文に <code>already mounted</code> または <code>exit status 78</code> を含む場合は<b>成功として扱う</b>。
+        目的は「マウントされている状態」であり、すでにそうなら達成されている。<br>
+        <span class="g">なお nfsmount でも <code>failed to mount FUSE fs:</code> という文言が出る（rclone のメッセージが共通のため）。<b>これを見て FUSE の問題と誤診断しないこと</b>（M-07）</span></td>
+    </tr>
+    <tr>
+      <td class="mono">mount/unmount<br><span class="g">（2 回目 / 存在しないパス）</span></td>
+      <td class="c"><b>❌</b></td>
+      <td>2 回目は <code>"error": "mount not found"</code> / <b>HTTP 500</b>。存在しないパスを指定しても同じ。<br>
+        <b>アプリ側の扱い（MUST）</b>: <code>mount not found</code> は<b>成功として扱う</b>。目的は「マウントされていない状態」であり、すでにそうなら達成されている</td>
+    </tr>
+    <tr>
+      <td class="mono">mount/unmountall</td>
+      <td class="c"><b>✅</b></td>
+      <td>マウントが 0 件でも <code>{}</code> を返す。何度呼んでもよい。<br>
+        <b>したがってアプリ終了時・プロファイル切替時は、個別 <code>unmount</code> のループではなくこれを使う</b>（§8.3 / R-G08）</td>
+    </tr>
+    <tr>
+      <td class="mono">options/set</td>
+      <td class="c"><b>✅</b></td>
+      <td>同じ値を 2 回設定しても <code>{}</code>。起動のたびに無条件で送ってよい</td>
+    </tr>
+    <tr>
+      <td class="mono"><b>operations/publiclink</b></td>
+      <td class="c"><b>❌<br>（危険側）</b></td>
+      <td><b>本質的に非冪等であり、しかもエラーにならないぶん危険。</b>2 回呼ぶと
+        <b>署名の異なる有効な presigned URL が 2 本発行され、両方が生きる</b>。<br>
+        本書は SEC-G05 で <b>URL を保存しない</b>と規定し、§7.2 で <b>発行後の無効化は不可</b>としている。
+        したがって<b>二度押しで生まれた 2 本目は、追跡も失効もできない公開面になる</b>
+        （キーをリネームする以外に無効化する手段がない）。<br>
+        <b>アプリ側の扱い（MUST）</b>: 発行要求の <b>in-flight 中はボタンを無効化</b>し、
+        <b>1 回のユーザー操作から 1 本しか発行されないことを UI 側で保証する</b>。
+        RC API 側には二重発行を防ぐ仕組みが無いため、<b>これはアプリの責任である</b>。<br>
+        <span class="g">※ 再発行そのものは安全（§7.2「再コピー」）。禁じているのは<b>1 回の操作で 2 本出る</b>ことであり、ユーザーが意図して 2 回発行することではない</span></td>
+    </tr>
+    <tr>
+      <td class="mono">operations/deletefile</td>
+      <td class="c"><span class="g">未確認</span></td>
+      <td>存在しないキーへの削除がエラーになるかは<b>未検証</b>。接続テストの後片付け（§4.4 手順 4）と <code>share-staging/</code> の掃除（§7.2）で重複実行が起こりうる。<b>G1-9 ⑧ で確認し、エラーなら「存在しない」を成功扱いにする</b></td>
+    </tr>
+  </table>
+
+  <h4>8.6.2 rcd プロセスの単一性（最重要）</h4>
+  <div class="box danger">
+    <div class="box-t">CRIT-03 — rcd の重複起動は rclone が防いでくれない</div>
+    <p style="margin-top:4px">
+      <b>実測</b>: <code>--rc-addr 127.0.0.1:61999</code> のようにポートを固定した場合、2 本目は
+      <code>CRITICAL: Failed to start remote control: failed to init server: listen tcp 127.0.0.1:61999: bind: address already in use</code> で失敗する。
+      <b>しかし本アプリが採用する <code>--rc-addr 127.0.0.1:0</code>（空きポート自動割当・§6.1）では、2 本目は別のポートを取得して<u>両方とも起動してしまう</u></b>（実測: 61987 と 62097 で同時に稼働）。<br>
+      <b>すなわち rcd プロセスの単一性は、rclone ではなくアプリが担保しなければならない。</b>
+    </p>
+    <p style="margin-top:8px"><b>起こりうる事故（実際に再現済み）</b>: アプリの異常終了で rcd が孤児として残ったまま再起動すると、
+      <b>2 本の rcd が同じマウントポイントを奪い合う</b>。<br>
+      <b>実測</b>: 旧 rcd（ポート 61662）がマウントを持ったまま新 rcd（ポート 61697）を起動したところ、
+      <b>新 rcd から見た <span class="api">mount/listmounts</span> は 0 件</b>を返した。
+      <b>しかし OS 上には当該マウントが 1 件実在していた</b>（<code>mount</code> コマンドで確認）。<br>
+      <b>すなわち §02 の DESIGN INVARIANT「マウント状態の真実は listmounts の応答である」が、この状況では嘘になる。</b>
+      アプリは「マウントされていない」と表示し、ユーザーは Finder で見えているドライブとの矛盾に直面する。</p>
+    <p style="margin-top:8px"><b>実装（MUST・§8.1 の手順 0 として実施）</b>:</p>
+    <ul class="plain" style="margin-top:4px">
+      <li><b>(a) PID ファイルを持つ</b>: <code>~/Library/Application Support/dev.fracturelab.skyfolder/rcd.pid</code> に、起動した rcd の PID と割り当てられたポートを書く</li>
+      <li><b>(b) 起動時に前回の残骸を回収する</b>: PID ファイルが存在したら、その PID のプロセスが<b>実在し、かつ自分が起動した rclone であること</b>を確認する
+        （PID の使い回しを踏まないため、<code>proc_pidpath</code> で実行パスを取得し同梱バイナリと一致するかを見る）。
+        確認できたら <b><code>SIGTERM</code> → 5 秒待って <code>SIGKILL</code></b> で終了させる。<br>
+        <b>孤児に対して RC API を呼んではならない（実装不能）</b>: rc-user / rc-pass は<b>メモリのみで永続化しない</b>（§4.1 / SEC-G01）ため、
+        前回インスタンスの認証情報はすでに失われており、孤児の rc は <b>401 を返す</b>（実測で確認済み）。
+        <b>PID ファイルに認証情報を書けば呼べるようになるが、それは SEC-G01 自身に違反するため採らない。</b>
+        <b><code>SIGTERM</code> で足りることは実測で確認済み（M-08）</b> — マウント中の rcd に <code>SIGTERM</code> を送ると、
+        プロセス終了と同時に<b>マウントが自動的に解除された</b>（<code>mount</code> の出力から消えた）。RC API を呼ぶ必要はない。<br>
+        <b>PID ファイルが無い孤児</b>（書込み失敗・ユーザーによる手動削除）も回収できるよう、フォールバックとして
+        <b>実行パスが同梱バイナリと一致する rclone プロセスを走査</b>する（他のアプリや、ユーザーが自分で入れた rclone を巻き込まないため、パス一致を条件にする）</li>
+      <li><b>(c) アプリ自身の単一インスタンス化</b>: macOS は通常 <code>.app</code> の二重起動を防ぐが、<b>ターミナルから実行ファイルを直接叩けば回避できる</b>。<code>NSRunningApplication</code> で同一 bundle identifier の先行インスタンスを検出し、存在すればそれを前面に出して自分は終了する</li>
+      <li><b>(d) 終了時に PID ファイルを削除する</b>。異常終了で残った場合は (b) が回収する</li>
+    </ul>
+    <p style="margin-top:8px"><b>この 4 つが揃って初めて「アプリを何度起動しても、rcd はつねに 1 本」という冪等性が成立する。</b>
+      (b) を実装せずに (c) だけでは、アプリがクラッシュしたあとの孤児 rcd を回収できない。</p>
+    <div class="box info" style="margin-top:12px">
+      <div class="box-t">VERIFIED — 回収手順を通しで実証済み（M-09）</div>
+      <p style="margin-top:4px">上記 (b) の手順を実機で通し実行し、<b>破綻の再現から解消までを確認した</b>:</p>
+      <ol style="margin:8px 0 0 22px">
+        <li>rcd を起動してマウント → <code>rcd.pid</code> に PID とポートを記録</li>
+        <li>rcd を残したまま「アプリだけ落ちた」状態を作る（孤児化）</li>
+        <li><b>回収せずに新 rcd を起動 → 破綻を再現</b>（新 rcd の <code>listmounts</code> は 0 件、OS 上は 1 件）</li>
+        <li>PID ファイルから PID を読み、<code>ps -p {pid} -o comm=</code> で<b>実行パスが同梱バイナリと一致することを照合</b>（PID 使い回しを踏まないため）</li>
+        <li><code>SIGTERM</code> を送出 → <b>1 秒で終了</b>し、<b>OS 上のマウントも 0 件になった</b>（M-08 のとおり自動解除される）</li>
+      </ol>
+      <p style="margin-top:8px">
+        <b>結果: rcd 0 本 / マウント 0 件。</b>回収手順は設計どおり機能する。
+        <code>SIGKILL</code> まで進むケースは今回発生しなかったが、その場合に備えた §8.4 手順 2 の例外規定は残す。
+      </p>
+    </div>
+  </div>
+
+  <h4>8.6.3 アプリ操作の冪等性</h4>
+  <table>
+    <tr><th style="width:170px">操作</th><th>冪等にするための規定</th></tr>
+    <tr><td>起動シーケンス（§8.1）</td><td><b>どの手順から中断・再開しても同じ終了状態に至ること。</b> 手順 0（rcd 残骸の回収）→ 1〜8 を、前回どこで落ちたかを問わず<b>毎回すべて実行する</b>。「前回どこまで進んだか」を記録して途中から再開する実装をしてはならない（その記録自体が壊れうる）。<br>
+      <b>補足 — <code>autoMount</code> と手動アンマウントの関係</b>: §8.2 は「Finder で手動アンマウントされたら自動再マウントしない」と規定しており、これには何らかの記憶が要る。
+      本原則と矛盾しないよう、次のとおり整理する: <b><code>autoMount</code>（永続設定）は起動時に一度だけ評価する。実行中に手動アンマウントされた事実は<u>セッションスコープのメモリにのみ</u>保持し、永続化しない</b>。
+      したがって<b>次回起動時は再び <code>autoMount</code> に従ってマウントされる</b>（アンマウントしたまま覚えておく実装にはしない）</td></tr>
+    <tr><td>マウント（§6.2）</td><td>§8.4 の stale mount 掃除 → <code>mount/mount</code> → <b>already mounted は成功扱い</b>。実行後に <span class="api">mount/listmounts</span> で望む状態になったかを確認し、<b>その結果のみを UI に反映する</b>（§02 DESIGN INVARIANT）</td></tr>
+    <tr><td>プロファイル保存（§4.1）</td><td>Keychain は <code>SecItemUpdate</code>→無ければ <code>SecItemAdd</code> の順（<b>Add を先に呼ぶと重複エラーになる</b>）。<code>profiles.json</code> は<b>全体を書き直す</b>（追記しない）。書き込みは一時ファイル + <code>rename(2)</code> の原子的置換とし、途中でクラッシュしても壊れた JSON が残らないようにする</td></tr>
+    <tr><td>プロファイル削除（SEC-G07）</td><td>2 回目の削除では Keychain が <code>errSecItemNotFound</code> を返す。<b>これは成功として扱う</b>（目的は「その項目が存在しない状態」であり、すでにそうなら達成されている）。<br>
+      <code>profiles.json</code> からの除去は保存と同じく<b>全体を書き直し + 一時ファイル → <code>rename(2)</code> の原子的置換</b>。<br>
+      <b>削除対象が <code>activeProfileId</code> だった場合の付け替え規則</b>: 残ったプロファイルのうち<b>先頭のものを新しい active にする</b>。1 つも残らない場合は <code>activeProfileId</code> を空にし、<b>オンボーディング画面へ戻す</b>（起動時に §8.1 の手順 2 が失敗して停止するのを避けるため）</td></tr>
+    <tr><td>期限付きリンクの発行（§7.2）</td><td><b>本質的に非冪等</b> — 呼ぶたびに新しい署名と期限を持つ URL が返る。<b>ただし状態を壊さない</b>（署名はローカル計算で、既存の URL を無効化しない）ため、<b>再実行を妨げる必要はない</b>。クリップボードを失った場合の再発行が安全なのはこの性質による（§7.2 の「再コピー」）</td></tr>
+    <tr><td>接続テスト（§4.4）</td><td>プローブのキー名に<b>乱数を含める</b>（すでに §4.4 手順 5 で規定）。前回のプローブが後片付け前に落ちて残っていても、次回のテストと衝突しない。<b>起動時に <code>.skyfolder-probe-*</code> を掃除する</b>（見つかっても失敗扱いにしない）</td></tr>
+    <tr><td>恒久公開（§7.3 の 6 手順）</td><td><b>手順 3 の Exif 除去は一時ディレクトリの複製に対して行い、原本を変更しない</b>ため、何度実行しても入力は同じ。手順 2 の衝突確認 → 上書き確認は<b>毎回行う</b>。<br>途中で失敗した場合、<b>一時ディレクトリを削除してから終了する</b>（<code>defer</code> 相当の確実な後始末）。同じファイルを再度公開すれば同じ key・同じ URL になる（slug 規則が決定的であるため）</td></tr>
+    <tr><td>取り下げ（§5.4）</td><td><b style="color:#b23">v1.3 まで「<code>movefile</code> が失敗しうる」としていたのは実測と逆だった（M-14）。</b><span class="api">operations/movefile</span> は移動先が既に存在しても<b>エラーにならず黙って上書きする</b>。<br>したがって危険は「二度押しで失敗する」ことではなく、<b>二度押しすると先に取り下げた <code>gone/{key}</code> を失う</b>ことにある。<br><b>移動の前に <span class="api">operations/stat</span> で存在を確かめ</b>、あれば <code>gone/{key}.{unixtime}</code> へ退避する。フォールバック自体は同じだが、<b>発動条件が「失敗したら」ではなく「事前に確かめて」</b>でなければならない</td></tr>
+    <tr><td>ログイン項目（§8.5）</td><td><code>SMAppService.mainApp.register()</code> は登録済みでも例外を投げない実装が期待されるが<b>未確認</b>。<code>status</code> を先に読み、望む状態と異なるときだけ呼ぶ（G5 で確認・U-14）</td></tr>
+    <tr><td>staging 掃除（§7.2）</td><td>日付 prefix 基準（14 日）で判定するため、<b>何度実行しても同じ集合が対象になる</b>。削除済みのキーに対する再削除は 8.6.1 の <code>operations/deletefile</code> の扱いに従う</td></tr>
+  </table>
+</section>
+
+<section id="s9">
+  <div class="sec-key">r2://spec/gui/09_security/</div>
+  <h2>09. セキュリティ要件</h2>
+  <p class="lead">DD-001 §9（SEC-01〜SEC-09）を継承したうえで、GUI 化により新規に発生する要件を SEC-G01〜SEC-G08 として追加する。</p>
+
+  <h3>9.1 DD-001 からの継承</h3>
+  <table>
+    <tr><th style="width:90px">ID</th><th style="width:80px">レベル</th><th>本アプリでの担保方法</th></tr>
+    <tr><td class="mono">SEC-01</td><td><span class="tag must">MUST</span></td><td>オンボーディング画面で必要権限（Object Read &amp; Write / 対象バケット限定）を明示し、Admin トークン非推奨を表示する（§5.1）</td></tr>
+    <tr><td class="mono">SEC-02</td><td><span class="tag must">MUST</span></td><td>Secret は Keychain のみ。<b>rclone の設定ファイルを一切生成しない</b>ため、secret がディスク上に平文で存在する瞬間が無い（U-01 が実測で成立）。既定 conf も読まない・書かない（§4.1 MUST）。<br>DD-001 SEC-02（rclone.conf を 600 にして vault/iCloud に置かない）の意図を、<b>ファイルそのものを作らないという形で満たす</b></td></tr>
+    <tr><td class="mono">SEC-03</td><td><span class="tag must">MUST</span></td><td>公開バケットの UI 上での常時視覚分離（オレンジ帯）+ 恒久公開時の毎回警告（§5.2 / §5.3）</td></tr>
+    <tr><td class="mono">SEC-04</td><td><span class="tag should">SHOULD</span></td><td>プロファイルに <code>credentialCreatedAt</code> を記録し、<b>365 日を超えたら設定画面にローテーション推奨バナー</b>を出す。CLI 版では外部の年次タスク管理に頼っていた運用を、アプリ内に取り込む</td></tr>
+    <tr><td class="mono">SEC-05</td><td><span class="tag should">SHOULD</span></td><td><code>publicBaseURL</code> に <code>*.r2.dev</code> が入力された場合に警告（V-05）</td></tr>
+    <tr><td class="mono">SEC-06</td><td><span class="tag may">MAY</span></td><td>異常ダウンロード急増のアラート化は <b>Cloudflare ゾーン側の設定</b>（Notifications: HTTP requests spike）であり、本アプリの機能範囲外。<b>落とすのではなく、設定画面の「公開設定」セクションに推奨事項として案内リンクを置く</b>にとどめる</td></tr>
+    <tr><td class="mono">SEC-07</td><td><span class="tag should">SHOULD</span></td><td>public バケットの棚卸しは §5.4 の公開物一覧が担う。<b>加えて <code>gone/</code> と <code>share-staging/</code> の合計サイズを設定画面に常時表示</b>し、閾値超過で通知する（R-G09）</td></tr>
+    <tr><td class="mono">SEC-08</td><td><span class="tag must">MUST</span></td><td>Exif 除去のアプリ内実装（§7.4）+ <b>G-08 による直置き経路の構造的な遮断</b>（read-only マウント）</td></tr>
+    <tr><td class="mono">SEC-09</td><td><span class="tag should">SHOULD</span></td><td>nfsmount の localhost NFS が認証なしで待ち受ける性質は変わらない。<b>オンボーディングで「共有 Mac・ゲストアカウント有効環境では使用しないでください」を表示</b>する</td></tr>
+  </table>
+
+  <h3>9.2 GUI 固有の新規要件</h3>
+  <table>
+    <tr><th style="width:90px">ID</th><th style="width:80px">レベル</th><th>要件</th></tr>
+    <tr><td class="mono">SEC-G01</td><td><span class="tag must">MUST</span></td><td><b>rc API は必ず認証付き・127.0.0.1 限定</b>。<code>--rc-no-auth</code> の使用を禁止する。rc-user / rc-pass はプロセス起動ごとの乱数とし、ディスク・ログ・引数のいずれにも出さない（§6.1）</td></tr>
+    <tr><td class="mono">SEC-G02</td><td><span class="tag must">MUST</span></td><td><b>secret をコマンドライン引数に置かない</b>。引数は <code>ps</code> で同一マシンの全ユーザーから可読。環境変数または設定ファイル経由に限る</td></tr>
+    <tr><td class="mono">SEC-G03</td><td><span class="tag must">MUST</span></td><td>公開時の画像メタデータ除去は既定 ON。OFF にできるのは<b>共有ダイアログでの都度操作のみ</b>で、永続的なオプトアウト設定を提供しない（§7.4）</td></tr>
+    <tr><td class="mono">SEC-G04</td><td><span class="tag must">MUST</span></td><td><b>ログに secret・presigned URL・Access Key を出力しない</b>。<br><b>加えて rc のユーザー名もマスク対象に含める</b> — rclone は起動時に <code>INFO : Using --user {rc-user} --pass XXXX as authenticated user</code> を出力し、<b>パスワードはマスクされるがユーザー名は平文で出る</b>（実測・M-04）。診断画面でログを表示する際にマスクする。<b>あわせて accountId もマスクする</b> — S3 操作の失敗時にエラー本文へ <code>https://{accountId}.r2.cloudflarestorage.com/…</code> が含まれるため（M-06）。rclone のログレベルは <code>INFO</code> 固定とし、<code>DEBUG</code> は診断画面から一時的に有効化した場合のみ許可する（DEBUG は署名付き URL を出力しうるため、有効化時に警告を表示し、アプリ再起動で自動的に INFO へ戻す）</td></tr>
+    <tr><td class="mono">SEC-G05</td><td><span class="tag must">MUST</span></td><td><b>presigned URL を永続化しない</b>。発行履歴には key と発行時刻のみを記録し、URL 文字列を保存しない（§7.2）</td></tr>
+    <tr><td class="mono">SEC-G06</td><td><span class="tag should">SHOULD</span></td><td>Keychain 項目は<b>2 つの独立した属性</b>で保護する: (a) <b>アクセス可能条件</b>は <code>kSecAttrAccessibleWhenUnlocked</code>（画面ロック中は読めない）、(b) <b>どのプログラムが読めるか</b>はアクセス制御リストで当該アプリの署名に限定する。<b>この 2 つは別の仕組みであり、(a) だけでは他アプリからの読み取りを防げない。</b>アプリの署名が変わると再入力を求められるが、それは正しい挙動として受容する</td></tr>
+    <tr><td class="mono">SEC-G07</td><td><span class="tag should">SHOULD</span></td><td>プロファイル削除時に <b>Keychain 項目も同時に削除</b>する。孤児となった認証情報を残さない</td></tr>
+    <tr><td class="mono">SEC-G08</td><td><span class="tag may">MAY</span></td><td>設定エクスポート機能を提供する場合、<b>認証情報を含めない</b>。エクスポートは非機密フィールドのみとし、インポート側で secret の再入力を求める</td></tr>
+  </table>
+
+  <div class="box info">
+    <div class="box-t">NOTE — 同梱バイナリのサプライチェーン</div>
+    <p style="margin-top:4px">
+      rclone をアプリに同梱する（G-02）以上、その入手経路の検証が必要になる。
+      ビルドスクリプトは <b>公式リリースの SHA-256 チェックサムを検証してから同梱</b>し、検証したバージョンとハッシュを <code>docs/BUNDLED.md</code> に記録する。
+      アプリ内の「診断」画面にも同梱 rclone のバージョンとハッシュを表示し、ユーザーが照合できるようにする。
+    </p>
+  </div>
+</section>
+
+<section id="s10">
+  <div class="sec-key">r2://spec/gui/10_errors/</div>
+  <h2>10. エラー処理・診断</h2>
+  <p class="lead">
+    CLI 版ではエラーはターミナルに出た文字列だった。GUI ではユーザーがログを読まない前提で設計する必要がある。
+    <b>すべてのエラーは「何が起きたか」ではなく「次に何をすればよいか」を主文にする。</b>
+  </p>
+
+  <h3>10.1 エラーカタログ</h3>
+  <table>
+    <tr><th style="width:70px">ID</th><th style="width:170px">事象</th><th>ユーザーへの提示（主文）</th><th style="width:130px">アクション</th></tr>
+    <tr><td class="mono">E-01</td><td>rcd が起動しない / 5 回再起動に失敗</td><td>「内部エンジンを起動できませんでした。アプリを再起動してください。」</td><td>診断画面 / ログを表示</td></tr>
+    <tr><td class="mono">E-02</td><td>同梱 rclone が v1.68 未満</td><td>「アプリの内部コンポーネントが古いため動作できません。」<span class="g">（ビルド不良。ユーザーには対処不能）</span></td><td>アップデート確認</td></tr>
+    <tr><td class="mono">E-03</td><td><code>mount/types</code> に <code>nfsmount</code> が無い</td><td>「このビルドはマウント機能に対応していません。共有機能のみ利用できます。」</td><td>マウント UI を無効化</td></tr>
+    <tr><td class="mono">E-04</td><td>OS 側に管理外の stale mount</td><td>「{path} が別のプロセスによってマウントされています。Finder で取り出してから再試行してください。」</td><td>Finder で開く</td></tr>
+    <tr><td class="mono">E-05</td><td>mountPoint が空でない</td><td>「{path} には既にファイルがあります。空のフォルダを指定してください。」<span class="g">（V-04 違反。既存データの隠蔽を防ぐ）</span></td><td>設定を開く</td></tr>
+    <tr><td class="mono">E-06</td><td>認証エラー（403）</td><td>「R2 に接続できませんでした。API トークンの権限（Object Read &amp; Write）と対象バケットの指定を確認してください。」</td><td>設定を開く / ダッシュボードを開く</td></tr>
+    <tr><td class="mono">E-07</td><td>バケットが存在しない（404）</td><td>「バケット「{bucketName}」が見つかりません。名前を確認してください。」</td><td>設定を開く</td></tr>
+    <tr><td class="mono">E-08</td><td>Keychain 読み取り失敗</td><td>「保存された認証情報を読み取れませんでした。Secret Access Key を再入力してください。」</td><td>設定を開く</td></tr>
+    <tr><td class="mono">E-09</td><td>Exif 除去に失敗</td><td>「画像のメタデータを除去できなかったため、公開を中止しました。」<span class="g">（DD-001 §8.3 の「続行しない」原則を継承）</span></td><td>再試行 / 除去せず公開</td></tr>
+    <tr><td class="mono">E-10</td><td>公開バケットに <code>publicBaseURL</code> 未設定</td><td>「公開 URL を発行するには、公開用ドメインの設定が必要です。」</td><td>設定を開く</td></tr>
+    <tr><td class="mono">E-11</td><td>presigned の期限が上限超過</td><td>「期限付きリンクは最長 7 日です。それ以上の共有には恒久公開をご利用ください。」</td><td>恒久公開に切替</td></tr>
+    <tr><td class="mono">E-12</td><td>アップロードジョブ失敗</td><td>「{filename} のアップロードに失敗しました。」+ rclone のエラー本文（折りたたみ）</td><td>再試行</td></tr>
+    <tr><td class="mono">E-15</td><td>マウント時に認証エラーが発生（S3 は <code>NewFs</code> で疎通するため、接続テストを通った後でもここで失敗しうる）</td><td>「{alias} をマウントできませんでした。R2 への接続を確認してください。」+ rclone のエラー本文（折りたたみ）</td><td>接続テストを再実行 / 設定を開く</td></tr>
+    <tr><td class="mono">E-14</td><td>read-only の public マウントへ Finder から書込み・削除・リネームを試みた</td>
+      <td>「公開バケットは読み取り専用です。公開するには「共有…」をお使いください。」<br>
+        <b>検知手段</b>: 書込み拒否は VFS 層で起きるため、アプリはその経路に居ない。<b>rclone のログファイルを tail し、<code>Read only file system</code> の行を検出したときに通知を出す</b>（ポーリングではなくファイル監視で足りる）。<br><b style="color:#b23">M-02 が挙げる <code>permission denied</code> / <code>Input/output error</code> を検知語にしてはならない（M-17）</b> — これらは NFS クライアントが呼び出し側へ返す errno で、<b>rclone のログには出ない</b>。<br><b>ログレベル INFO（§6.1 の既定）で出るのは <code>ERROR : nfs: Error Creating: Read only file system</code> の 1 種類だけで、削除とリネームは 1 行も出ない</b>。したがって E-14 で案内できるのは<b>書込み試行のときだけ</b>である。<br><b>Finder が作る <code>._*</code> / <code>.DS_Store</code> の作成試行も同じログを出す</b>ため、これらを通知対象から除外すること（除外しないと、公開マウントを開くだけで警告が鳴り続ける・M-20 / DD-001 R-10）。<br>
+        <b>できないこと（明記）</b>: <b>Finder が出す失敗ダイアログ自体は抑制できない。</b>アプリができるのは、その<b>あとに</b>通知で理由と正しい手順を案内することだけである。
+        「OS のエラー文を見せない」ことは達成不能なので、<b>OS のダイアログに加えて分かりやすい案内を出す</b>という設計にする（M-02）</td>
+      <td>共有ダイアログを開く</td></tr>
+    <tr><td class="mono">E-13</td><td>公開 URL の到達性検証に失敗（§4.4 手順 5）</td><td>「バケット「{bucketName}」にカスタムドメイン {publicBaseURL} が接続されていないようです。公開 URL は使えませんが、マウントは利用できます。」</td><td>ダッシュボードを開く / 手順を表示 / このまま保存</td></tr>
+  </table>
+
+  <div class="box danger">
+    <div class="box-t">MUST — 誤診断を生む導線を作らない</div>
+    <p style="margin-top:4px">
+      DD-001 F-01 の教訓。<b>バケット名なしの列挙（ListBuckets）は、正しいトークンでも権限不足で失敗する。</b>
+      したがって E-06（認証エラー）を、バケット名なしの操作の結果として出してはならない。
+      認証エラーの判定は<b>必ずバケット名付きの操作</b>で行うこと。
+      これを守らないと、ユーザーは正しいトークンを何度も作り直す無限ループに入る。
+    </p>
+  </div>
+
+  <h3>10.2 診断画面</h3>
+  <p>「何かおかしい」と感じたユーザーが最初に開く画面。以下を 1 画面に集約する。</p>
+  <table>
+    <tr><th style="width:180px">項目</th><th>表示内容</th></tr>
+    <tr><td>環境</td><td>macOS バージョン / アーキテクチャ / アプリバージョン</td></tr>
+    <tr><td>同梱 rclone</td><td>バージョン / SHA-256（SEC NOTE の照合用）/ <code>mount/types</code> の応答</td></tr>
+    <tr><td>rcd</td><td>稼働状態 / ポート / 起動からの経過時間 / 再起動回数</td></tr>
+    <tr><td>接続</td><td>各バケットへの <code>operations/list</code> の成否（§4.4 の接続テストを再実行するボタン）</td></tr>
+    <tr><td>マウント</td><td><code>mount/listmounts</code> の生の応答</td></tr>
+    <tr><td>VFS</td><td><code>vfs/stats</code> の生の応答（ダーティ項目数・キャッシュ使用量）</td></tr>
+    <tr><td>OS 設定</td><td><code>DSDontWriteNetworkStores</code> の現在値 + 設定ボタン（§6.3 第 2 層）</td></tr>
+    <tr><td>ログ</td><td>直近 200 行の表示 + 「Finder で表示」。<b>secret・presigned URL は表示前にマスクする</b>（SEC-G04）</td></tr>
+    <tr><td>一時的な DEBUG ログ</td><td>トグル。有効化時に警告を表示し、アプリ再起動で自動的に INFO へ戻す（SEC-G04）</td></tr>
+  </table>
+</section>
+
+<section id="s11">
+  <div class="sec-key">r2://spec/gui/11_roadmap/</div>
+  <h2>11. 実装ロードマップ</h2>
+  <p class="lead">
+    各フェーズは受入基準（AC）を全て満たしてから次へ進む。
+    <b>v1.2 の実機検証で主要な前提が確定したため、G1 の役割は「未確認事項の検証」から「実装と、実 R2 アカウントでの通し確認」へ変わった</b>（§14.1）。
+    残る検証は <b>G1-9</b>（S3 固有の挙動・U-04・U-13）と <b>G5-2</b>（<b>U-03 は v1.4 で解決済み</b>。残るのは Developer ID 署名での再確認と公証）に集約されている。
+  </p>
+
+  <div class="phase-card">
+    <div class="phase-head"><span class="pn">G0</span><span class="pt">プロジェクト基盤</span><span class="pd">est. 0.5 日</span></div>
+    <div class="phase-body">
+      <table>
+        <tr><th style="width:70px">Task</th><th>内容</th></tr>
+        <tr><td class="mono">G0-1</td><td>Xcode プロジェクト作成（SwiftUI / macOS 14 deployment target / bundle id <code>dev.fracturelab.skyfolder</code>）</td></tr>
+        <tr><td class="mono">G0-2</td><td>rclone バイナリ取得スクリプト（公式リリースの SHA-256 検証 → <code>Resources/</code> へ配置 → <code>docs/BUNDLED.md</code> 記録）。<br>
+          <b>初期値は v1.2 の検証で使用した以下に固定する</b>（本書の設計はこのバージョンでの実測に基づく）:<br>
+          <code class="mono" style="font-size:11px">rclone v1.75.0 / darwin-arm64<br>
+          SHA-256 (展開後バイナリ): f52ccc22e6fe61ea5791f0e186db323155ad1cc1b6dfe547f4bc665bea57a2dd</code><br>
+          この値を <code>docs/BUNDLED.md</code> に記録し、以降はアプリの更新とセットでのみ上げる（R-G06）。
+          <b>バージョンを上げる場合は §14.1 の検証を再実施すること</b> — 特に <span class="api">mount/types</span> の内容と <code>vfsOpt</code> の受理形式は将来変わりうる</td></tr>
+        <tr><td class="mono">G0-3</td><td>Build Phase で同梱バイナリへ実行権限を付与し、ネストされた実行可能ファイルとして個別署名する設定</td></tr>
+        <tr><td class="mono">G0-4</td><td><b>アセットの派生物生成（§15.2.3 A-01〜A-06）</b>: <code>scripts/make-assets.sh</code> を書き、<code>docs/design/</code> の原本から
+          AppIcon セット（1024px + 各サイズ）・メニューバー用テンプレート画像・ロゴの Light/Dark 版を生成する。<b>手作業で切り出さない</b>（原本差し替え時に再生成できなくなるため）</td></tr>
+        <tr><td class="mono">G0-5</td><td><b>A-03 の判断</b>: 現物の角丸をそのまま使うか、角丸なしのフルブリードにして OS のマスクに任せるかを、<b>実機のアイコンプレビューを見て決める</b>（設計だけでは決まらない）。<br>
+          <b>開発機（macOS 26）だけでなく target 下限（macOS 14/15）側でも確認する</b> — 両者はアイコンのマスク方式が異なるため。<br>
+          <b>A-04 / A-06 は実測で結論が出ている（M-10）</b>: <b>16pt 用の別版は必須</b>。この別版の作成もここで行う（<b>自動生成できない人間の作業</b>なので、成果物は原本として <code>docs/design/</code> に置く）</td></tr>
+      </table>
+      <p><b>AC:</b> 空のアプリが起動し、<code>Bundle.main.url(forResource:)</code> で取得した rclone を <code>Process</code> で実行して <code>rclone version</code> の出力が得られる。<br>
+        <b>あわせて Dock とメニューバーに SkyFolder のアイコンが正しく表示される</b>（既定の Xcode アイコンではない）。16pt で線画が判別できることを目視で確認済み。</p>
+    </div>
+  </div>
+
+  <div class="phase-card">
+    <div class="phase-head"><span class="pn">G1</span><span class="pt">rcd 制御層</span><span class="pd">est. 2 日</span></div>
+    <div class="phase-body">
+      <table>
+        <tr><th style="width:70px">Task</th><th>内容</th></tr>
+        <tr><td class="mono">G1-1</td><td><code>RcdSupervisor</code>: rcd の起動・実ポート取得・死活監視・指数バックオフ再起動・確実な終了</td></tr>
+        <tr><td class="mono">G1-2</td><td><code>RcClient</code>: Basic 認証 HTTP クライアント。<code>_async</code> ジョブのポーリング。エラー本文の構造化</td></tr>
+        <tr><td class="mono">G1-3</td><td><b>U-01 は実測で解消済み。</b>本タスクは実装のみ: 環境変数注入で R2（S3 バックエンド）のリモートを定義し、<span class="api">operations/list</span> が通ることを<b>実アカウントで</b>確認する<br><span class="g">（v1.2 の検証は <code>type=local</code> で行ったため、S3 固有のキー名 <code>RCLONE_CONFIG_R2_ACCESS_KEY_ID</code> 等の妥当性はここで確かめる）</span></td></tr>
+        <tr><td class="mono">G1-4</td><td><b>U-02 は実測で解消済み</b>（数値で受理）。本タスクは §6.2 の数値をそのまま実装するのみ</td></tr>
+        <tr><td class="mono">G1-5</td><td><b>CRIT-01 / U-09 は実測で解消済み。</b>同梱バージョンを v1.75.0 から上げた場合のみ <span class="api">mount/types</span> の再確認を行う（R-G06）</td></tr>
+        <tr><td class="mono">G1-6</td><td><b>U-08 は実測で解消済み</b>（<code>_filter.ExcludeRule</code> が持続適用される）。本タスクは実装のみ</td></tr>
+        <tr><td class="mono">G1-7</td><td><b>U-05 は解消済み。ただし v1.3 の結論は誤りだった（M-12）</b>: <code>--log-file</code> 指定時は
+          stdout も stderr も空で、<b>ポートはログファイルに出る</b>。本タスクは<b>実装の確認のみ</b>:
+          ログファイルのパースが正しく動くこと・起動前のオフセットから後ろだけを読んでいること</td></tr>
+        <tr><td class="mono">G1-8</td><td><b>U-11 / U-12 は実測で解消済み</b>（同期で 0.036 秒・per-mount の ReadOnly が成立）。本タスクは実装のみ</td></tr>
+        <tr><td class="mono">G1-9</td><td><b>実アカウントでの通し確認</b>: 実際の R2 認証情報で G1-3〜G1-8 の実装が動くことを確認する。<br>
+          <span class="g">v1.2 で確認済み: 環境変数による S3 リモートの定義・endpoint の適用・設定キー名の実在（§14.1 U-01）。</span><br>
+          <b>ここで初めて確認されるもの（すべて必須）</b>:<br>
+          ① SigV4 署名の成立・実バケットへの読み書き<br>
+          ② マルチパートアップロード（128MB 超）<br>
+          ③ <code>no_check_bucket</code> の効果・バケットスコープトークンでの権限境界<br>
+          ④ <b>U-13: <span class="api">operations/publiclink</span> による presigned URL の実発行</b>（<code>expire: "1m"</code> で 200 → 61 秒後に 403。8 日指定時の挙動も確認）<br>
+          ⑤ <b>U-04: <code>Cache-Control</code> の実付与</b>（§4.4 手順 5 のプローブを <code>UploadHeaders</code> 付きで PUT し、GET のレスポンスヘッダを確認）<br>
+          ⑥ <b>M-03 の裏取り</b>: <code>vfs/stats</code> の <code>uploadsQueued</code> が実際に増減すること（local ではキューが発生せずキー名しか確認できていない）<br>
+          ⑦ <b>U-11 の再計測</b>: S3 では <code>NewFs</code> の疎通により応答時間が変わる。マウント時の認証エラー経路（E-15）も確認する<br>
+          ⑧ <b>冪等性の確認（§8.6.1）</b>: <span class="api">operations/deletefile</span> を<b>存在しないキー</b>に対して実行し、エラーになるかを確認する。
+          エラーなら「存在しない」を成功として扱う実装にする（接続テストの後片付けと <code>share-staging/</code> の掃除で重複実行が起こりうるため）</td></tr>
+      </table>
+      <p><b>AC:</b> T-G01〜T-G06 全パス。<b>ハードコードした認証情報で、コード経由で 1 バケットを実際にマウントし Finder から見える</b>。<br>
+        <b>v1.2 で U-01 / U-02 / U-05 / U-08 / U-09 / U-11 / U-12 と CRIT-01 は <code>type=local</code> の実測で解消済み</b>であり、G1 の役割は
+        <b>(a) それらの実装、(b) S3（実 R2 アカウント）バックエンドでの通し確認</b>の 2 点に絞られた。<br>
+        <b>S3 固有の挙動はまだ一度も確認されていない</b>ため、G1-9 を省略して G2 へ進んではならない。</p>
+    </div>
+  </div>
+
+  <div class="phase-card">
+    <div class="phase-head"><span class="pn">G2</span><span class="pt">プロファイル・Keychain・オンボーディング</span><span class="pd">est. 1 日</span></div>
+    <div class="phase-body">
+      <table>
+        <tr><th style="width:70px">Task</th><th>内容</th></tr>
+        <tr><td class="mono">G2-1</td><td><code>ProfileStore</code>: スキーマ（§4.2）の永続化・バリデーション（§4.3）</td></tr>
+        <tr><td class="mono">G2-2</td><td>Keychain 読み書き（保存 / 取得 / プロファイル削除時の連動削除）</td></tr>
+        <tr><td class="mono">G2-3</td><td>接続テスト（§4.4 の 4 ステップ）</td></tr>
+        <tr><td class="mono">G2-4</td><td>オンボーディング 4 ステップ（§5.1）</td></tr>
+      </table>
+      <p><b>AC:</b> T-G07〜T-G11 全パス。<b>アプリを初回起動し、画面入力のみで接続テストを通過してプロファイルを保存できる</b>（ターミナル操作ゼロ）。これが本アプリの中核要求「config を自分で入力するだけで R2 と接続できる」の達成判定点。</p>
+    </div>
+  </div>
+
+  <div class="phase-card">
+    <div class="phase-head"><span class="pn">G3</span><span class="pt">マウント UI・常駐</span><span class="pd">est. 1 日</span></div>
+    <div class="phase-body">
+      <table>
+        <tr><th style="width:70px">Task</th><th>内容</th></tr>
+        <tr><td class="mono">G3-1</td><td>メイン画面（§5.2）: バケット一覧・マウント切替・公開バケットの視覚分離</td></tr>
+        <tr><td class="mono">G3-2</td><td>ポーリング（§6.4）と状態の単一情報源化（§02 DESIGN INVARIANT）</td></tr>
+        <tr><td class="mono">G3-3</td><td><code>MenuBarExtra</code>（§5.5）+ 通知</td></tr>
+        <tr><td class="mono">G3-4</td><td>ライフサイクル（§08）: stale mount 掃除・断への対応・終了時の未送信保護</td></tr>
+        <tr><td class="mono">G3-5</td><td><code>SMAppService</code> によるログイン時起動</td></tr>
+      </table>
+      <p><b>AC:</b> T-G12〜T-G18 全パス。<b>Mac 再起動後、操作なしでマウントが復活する</b>。Finder で手動アンマウントすると通知が出て、その場のボタンで再マウントできる。</p>
+    </div>
+  </div>
+
+  <div class="phase-card">
+    <div class="phase-head"><span class="pn">G4</span><span class="pt">共有 UI</span><span class="pd">est. 1 日</span></div>
+    <div class="phase-body">
+      <table>
+        <tr><th style="width:70px">Task</th><th>内容</th></tr>
+        <tr><td class="mono">G4-1</td><td>共有ダイアログ（§5.3）: 2 系統の選択・slug プレビュー・上書き確認</td></tr>
+        <tr><td class="mono">G4-2</td><td>presigned 発行（§7.2）</td></tr>
+        <tr><td class="mono">G4-3</td><td>恒久公開（§7.3）: 6 ステップの処理順序</td></tr>
+        <tr><td class="mono">G4-4</td><td>Exif 除去の ImageIO 実装（§7.4）。<b>Orientation / ICC の保持が必須要件</b></td></tr>
+        <tr><td class="mono">G4-5</td><td>公開物一覧・取り下げ（§5.4）</td></tr>
+        <tr><td class="mono"><b>G4-0</b></td><td><b>【最初に実施】共有経路（ゴール c）の通し点検</b><br>
+          <b>本書のレビューで、共有経路だけが 4 ラウンド連続で見落とされ続けたという傾向が指摘された</b>
+          （<code>type=local</code> 検証で <span class="api">operations/publiclink</span> を叩けなかった / U-13 の登録漏れ / §8.6.1 の冪等性表からの脱落）。
+          原因は設計のメンタルモデルが<b>マウント中心</b>に寄っていることにある。<br>
+          <b>したがって G4 の実装に入る前に、共有経路を 1 本の線として点検する</b>:
+          <b>発行 → 二度押し → 履歴 → 失効不可 → staging → 取り下げ</b>。
+          各段で「この状態でユーザーが同じ操作をもう一度したらどうなるか」「失敗したら何が残るか」を確認し、
+          <b>本書の §7・§8.6.1・§8.6.3 に漏れがあれば先に改版する</b>。<br>
+          <span class="g">これは実装タスクではなく設計の点検タスクである。成果物は「漏れがなかった」という確認、または本書の改版</span></td></tr>
+        <tr><td class="mono">G4-6</td><td>G-08 の検証: <code>visibility == "public"</code> のバケットが <b>read-only でマウントされ、Finder から書込み・削除・リネームができない</b>ことの確認。<code>allowDirectWriteToPublic</code> の切替で read-write に変わることの確認</td></tr>
+      </table>
+      <p>
+        <b>AC:</b> T-G19〜T-G27 全パス。加えて所要時間の基準を満たすこと —
+        <b>5MB の JPEG を、実効上り 10Mbps 以上の回線で恒久公開したとき、ドロップから URL がクリップボードに入るまで 10 秒以内</b>
+        （DD-001 の CLI 版 AC「30 秒以内」を GUI では短縮する）。
+        <b>URL のクリップボードコピーは、アップロードジョブの完了（<span class="api">job/status</span> が成功）を待ってから行う</b> —
+        まだ存在しないオブジェクトの URL を渡してしまうことを防ぐため。大きなファイルではこの基準を超えるが、
+        その場合は進捗表示を出して待たせる（基準は上記の条件下でのみ判定する）。
+      </p>
+    </div>
+  </div>
+
+  <div class="phase-card">
+    <div class="phase-head"><span class="pn">G5</span><span class="pt">診断・配布</span><span class="pd">est. 1 日</span></div>
+    <div class="phase-body">
+      <table>
+        <tr><th style="width:70px">Task</th><th>内容</th></tr>
+        <tr><td class="mono">G5-1</td><td>診断画面（§10.2）+ エラーカタログの実装（§10.1）</td></tr>
+        <tr><td class="mono">G5-2</td><td>Developer ID 署名 + Hardened Runtime。<b>同梱 rclone の個別署名と、library validation の要否検証</b></td></tr>
+        <tr><td class="mono">G5-3</td><td><code>notarytool</code> による公証 + <code>stapler</code>。DMG 作成</td></tr>
+        <tr><td class="mono">G5-4</td><td>README / セットアップガイド（DD-001 と本書へのリンクを含む）</td></tr>
+        <tr><td class="mono">G5-5</td><td><b>A-01 の暫定対応を採っていた場合、本番のアイコン元データに差し替える</b>（904px の拡大版のままリリースしない）。
+          <code>scripts/make-assets.sh</code> を再実行するだけで入れ替わることを確認する</td></tr>
+      </table>
+      <p><b>AC:</b> T-G28〜T-G30 全パス。<b>別の Mac にダウンロードした DMG から、Gatekeeper の警告なしにインストール・起動できる</b>。</p>
+    </div>
+  </div>
+</section>
+
+<section id="s12">
+  <div class="sec-key">r2://spec/gui/12_test/</div>
+  <h2>12. テスト計画</h2>
+  <table>
+    <tr><th style="width:70px">ID</th><th style="width:300px">手順</th><th>期待結果</th></tr>
+    <tr><td class="mono">T-G01</td><td>同梱 rclone を <code>Process</code> で実行し <code>version</code> を取得</td><td>v1.68 以上が返る</td></tr>
+    <tr><td class="mono">T-G02</td><td>rcd を <code>--rc-addr 127.0.0.1:0</code> で起動</td><td><b>--log-file が指すログファイル</b>から実ポートが取得でき、<code>core/version</code> に Basic 認証付きで応答がある。<b style="background:#ffe8cc">stdout と stderr がどちらも空である</b>ことも確認する（M-12）</td></tr>
+    <tr><td class="mono">T-G03</td><td>認証情報なしで rc API を叩く</td><td><b>401 が返る</b>（<code>--rc-no-auth</code> になっていないことの確認・SEC-G01）</td></tr>
+    <tr><td class="mono">T-G04</td><td><code>ps aux</code> で rcd のコマンドラインを確認</td><td><b>Secret Access Key・<code>--rc-user</code> / <code>--rc-pass</code> の値のいずれも含まれていない</b>（SEC-G01 / SEC-G02）。<code>--rc-user</code> という文字列自体が引数に現れないこと</td></tr>
+    <tr><td class="mono">T-G05</td><td><code>mount/types</code> を呼ぶ</td><td>応答配列に <code>nfsmount</code> が含まれる（CRIT-01）。<br><b>v1.75.0 での期待値は <code>["cmount","nfsmount"]</code>（実測）。これと異なる場合は同梱バージョンが変わった証拠なので、§14.1 の検証を再実施する</b></td></tr>
+    <tr><td class="mono">T-G06</td><td><code>mountType</code> を<b>省略して</b> <code>mount/mount</code> を呼ぶ。<br><b>前提: 検証機に macFUSE / fuse-t が導入されていないこと</b>（導入済み環境では成功しうるため、この検証は成立しない。<code>ls /Library/Filesystems/</code> で事前確認する）</td><td>失敗する。<b>この失敗の再現をもって CRIT-01 の必要性を確認する</b></td></tr>
+    <tr><td class="mono">T-G07</td><td>初回起動 → オンボーディングで実在の accountId / トークン / バケットを入力</td><td>接続テスト 4 項目すべてが ✓。プロファイルが保存される。<b>ターミナル操作ゼロで完了する</b></td></tr>
+    <tr><td class="mono">T-G08</td><td>誤った Secret を入力して接続テスト</td><td>E-06 が表示される。<b>「トークンを作り直せ」ではなく「権限とバケット名を確認」の文言</b>であること</td></tr>
+    <tr><td class="mono">T-G09</td><td>存在しないバケット名を入力</td><td>E-07 が表示される（E-06 と区別されていること）</td></tr>
+    <tr><td class="mono">T-G10</td><td><code>~/.config/rclone/rclone.conf</code> の内容と mtime を事前記録 → 全操作実行 → 再確認</td><td><b>一切変更されていない</b>（§4.1 MUST）</td></tr>
+    <tr><td class="mono">T-G11</td><td>プロファイルを削除</td><td>Keychain の該当項目も削除されている（<code>security find-generic-password</code> で確認・SEC-G07）</td></tr>
+    <tr><td class="mono">T-G12</td><td>マウント実行 → Finder で <code>~/SkyFolder/…</code> を開く</td><td>ドライブとして見え、1MB のファイルをコピーできる（private バケット）</td></tr>
+    <tr><td class="mono">T-G12b</td><td><b>public マウントのボリューム属性を確認</b>: <code>mount | grep {mountPoint}</code></td><td><b><code>read-only</code> フラグは付かない</b>（M-01）。これは異常ではなく仕様。read-only の担保は rclone の VFS 層であり、<b>この結果をもって「G-08 が効いていない」と誤診断しないこと</b>。実際の担保は T-G26 で確認する</td></tr>
+    <tr><td class="mono">T-G13</td><td>コピー直後に「未送信」表示を確認 → 30 秒待つ</td><td>未送信が 1 → 0 に遷移し、バケット側にオブジェクトが存在する（<b>DD-001 R-03 の可視化が機能している</b>）</td></tr>
+    <tr><td class="mono">T-G14</td><td>Finder から手動で「取り出す」</td><td>5 秒以内に通知が出て、UI の状態が「未マウント」に変わり、<b>再マウントボタンが機能する</b></td></tr>
+    <tr><td class="mono">T-G15</td><td>rcd プロセスを <code>kill</code></td><td>自動再起動し、autoMount のバケットが再マウントされる</td></tr>
+    <tr><td class="mono">T-G16</td><td>マウントポイントに既存ファイルを置いた状態でマウント</td><td>E-05 で中止される（<b>既存データが隠蔽されない</b>）</td></tr>
+    <tr><td class="mono">T-G17</td><td>未送信ファイルがある状態でアプリを終了</td><td>終了が保留され、確認ダイアログが出る（§8.3）</td></tr>
+    <tr><td class="mono">T-G18</td><td>Mac を再起動（ログイン項目 ON）</td><td>操作なしでマウントが復活する</td></tr>
+    <tr><td class="mono">T-G19</td><td><code>Logo Final.PNG</code> を恒久公開（prefix=img）</td><td>key が <code>img/2026/logo-final.png</code> に slug 化され（<b>拡張子も小文字</b>）、URL がクリップボードに入る</td></tr>
+    <tr><td class="mono">T-G20</td><td>T-G19 と同名で再実行</td><td>上書き確認ダイアログが出る（無確認上書きしない）</td></tr>
+    <tr><td class="mono">T-G21</td><td>GPS 付き JPEG を恒久公開 → 公開 URL の画像を検査</td><td><b>GPS・撮影日時・機材タグが存在しない。Orientation と ICC プロファイルは保持されている。手元の原本の Exif は残っている</b></td></tr>
+    <tr><td class="mono">T-G22</td><td>メタデータ除去のチェックを OFF にする</td><td>赤字の注意文が展開される。<b>「今後表示しない」の選択肢が存在しない</b>（SEC-G03）</td></tr>
+    <tr><td class="mono">T-G23</td><td>private のファイルで期限 1 分の共有リンクを発行 → <code>curl</code></td><td>200。61 秒後の再 <code>curl</code> は 403</td></tr>
+    <tr><td class="mono">T-G24</td><td>期限に 8 日を入力</td><td>E-11 が表示され、恒久公開への切替が提示される</td></tr>
+    <tr><td class="mono">T-G25</td><td>公開物一覧から取り下げを実行</td><td><code>gone/{key}</code> へ移動し、「CDN キャッシュのため即座には 404 にならない」旨が表示される</td></tr>
+    <tr><td class="mono">T-G26</td><td>Finder で public マウントにファイルをコピー / 既存ファイルを削除・リネーム</td><td><b>いずれも失敗する（読み取り専用ボリュームとして拒否される）</b>。G-08 が機能していることの確認。<br>続けて <code>allowDirectWriteToPublic</code> を true にすると<b>自動的に再マウントが走り</b>（§3.7 NOTE の「即座に反映」）、同じ操作が成功すること。<b>手動の再マウント操作を要さないこと自体も検証対象とする</b></td></tr>
+    <tr><td class="mono">T-G27</td><td>ログファイルを <code>grep</code></td><td><b>Secret Access Key・presigned URL の署名部分が含まれていない</b>（SEC-G04）</td></tr>
+    <tr><td class="mono">T-G31</td><td><b>マウント済みの状態で「マウント」を再実行</b>（ボタン二度押し相当）</td><td><b>エラーダイアログが出ない。</b>UI の状態は「マウント済み」のまま変わらない（<code>already mounted</code> / <code>exit status 78</code> を成功扱いにしている・§8.6.1）</td></tr>
+    <tr><td class="mono">T-G32</td><td>未マウントの状態で「アンマウント」を再実行</td><td><b>エラーダイアログが出ない</b>（<code>mount not found</code> を成功扱い）</td></tr>
+    <tr><td class="mono">T-G33</td><td><b>アプリを起動したまま、ターミナルから実行ファイルを直接叩いて二重起動を試みる</b></td><td>2 つ目は起動せず、先行インスタンスが前面に出る。<b><code>pgrep -f "rclone rcd"</code> が 1 本のままである</b>（CRIT-03 / §8.6.2 (c)）</td></tr>
+    <tr><td class="mono">T-G34</td><td><b>アプリを <code>SIGKILL</code> で強制終了</b>（rcd を孤児にする）<b>→ 再起動</b></td><td>起動時に孤児 rcd が回収され、<b><code>pgrep -f "rclone rcd"</code> が 1 本になる</b>。マウントが正常に復帰する（§8.6.2 (b)）。<br><span class="g">※ 回収手順そのものは rclone 単体で実証済み（M-09）。本テストはアプリに組み込んだ状態での確認</span></td></tr>
+    <tr><td class="mono">T-G35</td><td>同じファイルを同じ設定で<b>2 回 恒久公開</b>する</td><td>2 回目は上書き確認ダイアログが出る（T-G20）。<b>確認して進めた場合、生成される key と URL が 1 回目と完全に一致する</b>（slug 規則が決定的・§8.6.3）。一時ディレクトリが残っていない</td></tr>
+    <tr><td class="mono">T-G36</td><td><b>同じ key を 2 回 取り下げる</b></td><td>1 回目は <code>gone/{key}</code> へ移動。2 回目は<b>エラーにならず</b> <code>gone/{key}.{unixtime}</code> へフォールバックし、<b style="background:#ffe8cc">1 回目に退避した内容が失われていない</b>こと（M-14: <code>movefile</code> は黙って上書きするため、事前の <span class="api">operations/stat</span> が効いていることの確認になる）</td></tr>
+    <tr><td class="mono">T-G37</td><td><b>プロファイル保存を 2 回連続で実行</b>し、Keychain を <code>security find-generic-password</code> で確認</td><td>該当項目が<b>重複せず 1 組のまま</b>（<code>SecItemUpdate</code> → 無ければ <code>SecItemAdd</code> の順・§8.6.3）。<code>profiles.json</code> も壊れていない</td></tr>
+    <tr><td class="mono">T-G38</td><td><b>プロファイル削除を 2 回実行</b>（2 回目は既に存在しない状態）</td><td><b>エラーにならない</b>（<code>errSecItemNotFound</code> を成功扱い）。<code>profiles.json</code> が壊れていない。<br>削除したのが active だった場合、<b>残りの先頭が新しい active になっている</b>。1 つも残らなければオンボーディングへ遷移する（§8.6.3）</td></tr>
+    <tr><td class="mono">T-G28</td><td><code>codesign -dv --verbose=4</code> と <code>spctl -a -vv</code></td><td>Developer ID で署名され、公証チケットが添付されている。同梱 rclone も個別に署名されている</td></tr>
+    <tr><td class="mono">T-G29</td><td>別の Mac に DMG をダウンロードして起動</td><td>Gatekeeper の警告なしに起動する</td></tr>
+    <tr><td class="mono">T-G30</td><td>診断画面を開く</td><td>同梱 rclone のバージョンと、<b>配布物（署名前）の SHA-256</b> が表示され、<code>docs/BUNDLED.md</code> の記録と一致する。<br><b style="color:#b23">v1.3 まで「同梱 rclone の SHA-256 が記録と一致する」としていたのは G0-3 と両立しなかった。</b><code>.app</code> の中の rclone は G0-3 でネストされた実行可能ファイルとして<b>個別署名される</b>ため、実体のハッシュは配布物のそれと<b>必ず異なる</b>（実測: <code>f52ccc22…</code> → <code>dcb48186…</code>）。<br>したがって照合できるのは、<code>fetch-rclone.sh</code> が検証した<b>配布物のハッシュ</b>のほうで、これをリソース（<code>rclone.sha256</code>）として同梱し診断画面に表示する。署名後の実体のハッシュは<b>参考値</b>として別に併記する（改ざん検知は codesign が担う）</td></tr>
+  </table>
+</section>
+
+<section id="s13">
+  <div class="sec-key">r2://spec/gui/13_risks/</div>
+  <h2>13. 既知の制約・リスクと対処</h2>
+  <p class="lead">
+    DD-001 §13 の R-01〜R-07 / R-09 / R-10 は<b>そのまま継承される</b>。基盤が同じである以上、空フォルダが消えることもリネームがコピー+削除になることも変わらない。<br>
+    <b>ただし R-08（<code>brew upgrade</code> 後に T-02/T-03/T-06 を再実行する運用）は継承ではなく置換である</b> — 本アプリは rclone を同梱してユーザーの差し替え経路を提供しないため（R-G06）。
+    本節では GUI 化により新規に発生する、または性質が変わるリスクのみを扱う。
+  </p>
+  <table>
+    <tr><th style="width:70px">ID</th><th style="width:250px">事象</th><th>対処 / 設計上の織り込み</th></tr>
+    <tr><td class="mono">R-G01</td><td>public バケットのマウントにより、Exif 除去を経ない公開経路が生まれうる</td><td><b>G-08（public を read-only でマウント）により、既定構成では発生しない。</b>書込み経路が存在しないため、検知機構に頼らず構造的に解消されている。<br><b>残存するのは <code>allowDirectWriteToPublic</code> を true にした場合のみ</b>で、その場合は利用者が明示的にリスクを引き受けたものとして扱う（設定画面で赤字警告を常時表示）。DD-001 が「最大の運用リスク」としていた項目を、本書では<b>設計で消した</b>ことになる</td></tr>
+    <tr><td class="mono">R-G02</td><td>rc API はシェルアクセス相当。ローカルの悪意あるプロセスが認証情報を得れば任意の rclone 操作が可能</td><td>SEC-G01（127.0.0.1 限定・乱数認証・ポート非固定）。ただし<b>同一ユーザー権限のプロセスに対する防御は原理的に限定的</b>である。DD-001 SEC-09 と同じく単一利用者の Mac を前提とする</td></tr>
+    <tr><td class="mono">R-G03</td><td>環境変数経由の secret は Keychain より弱い保護</td><td>§6.1 CAUTION。「ディスクに平文で残らない」ことが主たる利益であり、プロセス間の完全な秘匿ではないと理解して実装する。引数に置くことは絶対に禁止（SEC-G02）</td></tr>
+    <tr><td class="mono">R-G04</td><td>ImageIO による Exif 除去は JPEG を再エンコードするため厳密には非可逆</td><td>G-06 CAUTION。品質 1.0 で影響を最小化。原本は変更しない。劣化を避けたい場合の逃げ道として「除去せず公開」を提供するが、既定は除去 ON</td></tr>
+    <tr><td class="mono">R-G05</td><td>exclude 対象（<code>.DS_Store</code> 等）への書込み拒否が Finder の権限エラーとして散発表示されうる</td><td>DD-001 R-10 の継承。§6.3 の二重防御で発生頻度を下げる。頻発する場合は診断画面から exclude を外し、代わりに定期掃除へ切り替える運用に変更する（本書の改版事項）</td></tr>
+    <tr><td class="mono">R-G06</td><td>rclone のバージョンアップで RC API のパラメータ形式が変わりうる</td><td>同梱バージョンを固定し、アプリ更新とセットでのみ上げる。<b>ユーザーが自分で rclone を入れ替える経路を提供しない</b>。更新時は T-G01〜T-G06 と T-G12〜T-G13 を再実行する</td></tr>
+    <tr><td class="mono">R-G07</td><td>App Sandbox 無効のため Mac App Store 配布ができない</td><td>G-07。この判断は覆らない。配布は Developer ID + notarization の DMG に固定し、自動更新機構（Sparkle 等）の導入は G5 以降の検討事項とする</td></tr>
+    <tr><td class="mono">R-G08</td><td>複数プロファイルを同時にマウントすると、rcd 1 本で複数リモートを扱うことになる</td><td><b>v1.0 では「アクティブなプロファイルは 1 つ」に限定する。</b>プロファイル切替時は<b>まず §8.3 と同じ未送信データの判定を行い</b>（ダーティ項目が 0 でなければ切替を保留し確認ダイアログを出す）、その後に全アンマウント → rcd 再起動 → 再マウント。<b>この判定を省くと、アプリ終了時と同じデータ喪失が切替経路で起きる。</b>同時マウントは複雑度に見合わないため v1.0 のスコープ外とする</td></tr>
+    <tr><td class="mono">R-G09</td><td>ユーザーが「削除」したつもりのファイルが <code>gone/</code> に残り続け、ストレージ課金が続く</td><td>§5.4 の四半期棚卸し UI。<code>gone/</code> の合計サイズを設定画面に常時表示し、閾値（既定 1GB）を超えたら通知する</td></tr>
+    <tr><td class="mono">R-G10</td><td>ログアウト・シャットダウン時、OS の終了タイムアウト内に未送信データを送り切れない可能性</td><td>§8.3。待機を最大 20 秒に短縮し、送り切れない場合は<b>次回起動時に「前回未送信のデータがありました」と通知</b>する。VFS キャッシュは残っているため多くの場合は復帰後に送信される</td></tr>
+  </table>
+</section>
+
+<section id="s14">
+  <div class="sec-key">r2://spec/gui/14_appendix/</div>
+  <h2>14. 付録</h2>
+
+  <h3>14.1 前提条件の検証状況</h3>
+  <div class="box decide">
+    <div class="box-t">VERIFIED — v1.2 で実機検証を実施した</div>
+    <p style="margin-top:4px">
+      v1.1 までは 12 件すべてが未検証だった。v1.2 の作業で <b>rclone v1.75.0（darwin-arm64）を macOS 26.6.2 / arm64 上で実際に動かし、
+      RC API を叩いて 8 件を実測で確定させた</b>。検証は R2 の実アカウントを使わず、<code>type=local</code> のリモートで行っている
+      （RC API の挙動そのものはバックエンドに依存しないため）。
+    </p>
+    <table style="margin-top:12px">
+      <tr><th style="width:130px">検証環境</th><th>値</th></tr>
+      <tr><td>rclone</td><td class="mono">v1.75.0 / darwin-arm64 / go1.26.5 / tags: cmount</td></tr>
+      <tr><td>SHA-256</td><td class="mono" style="font-size:11px">f52ccc22e6fe61ea5791f0e186db323155ad1cc1b6dfe547f4bc665bea57a2dd</td></tr>
+      <tr><td>OS</td><td class="mono">macOS 26.6.2 (25G83) / arm64</td></tr>
+      <tr><td>検証日</td><td class="mono">2026-08-30</td></tr>
+    </table>
+    <p style="margin-top:10px">
+      <b>この rclone v1.75.0 と上記ハッシュを、G0-2 で固定する同梱バージョンの初期値とする</b>（<code>docs/BUNDLED.md</code> に記録すること）。
+      本書の設計はこのバージョンでの実測に基づいている。
+    </p>
+  </div>
+
+  <h4>検証済み（実測で成立を確認）</h4>
+  <table>
+    <tr><th style="width:70px">ID</th><th style="width:230px">前提</th><th>実測結果</th></tr>
+    <tr>
+      <td class="mono"><b>U-01</b></td>
+      <td>環境変数のみで、設定ファイルなしにリモートを定義できる（G-04 第 1 案）</td>
+      <td><b>✅ 成立。</b> <code>RCLONE_CONFIG_LOC_TYPE=local</code> のみを設定し <code>rcd --config ""</code> で起動したところ、
+        <span class="api">operations/list</span> が <code>fs: "loc:{path}"</code> に対して正常応答した。<br>
+        <b>S3（R2）バックエンドでも確認済み</b>: §6.1 の環境変数一式（<code>RCLONE_CONFIG_R2_TYPE=s3</code> / <code>PROVIDER=Cloudflare</code> / <code>ACCESS_KEY_ID</code> / <code>SECRET_ACCESS_KEY</code> / <code>ENDPOINT</code> / <code>ACL</code> / <code>NO_CHECK_BUCKET</code>）をダミー値で設定して <span class="api">operations/list</span> を <code>fs: "r2:testbucket"</code> に対して実行したところ、
+        <b>エラーが <code>operation error S3: ListObjectsV2 ... Get "https://{指定した endpoint}/testbucket?list-type=2"</code> となった</b> —
+        すなわちリモートは <b>S3 バックエンドとして解決され、指定した endpoint に実際に HTTPS リクエストを送るところまで到達している</b>（ダミーのホストなので送信自体は失敗）。<br>
+        設定キー名（<code>provider</code> / <code>access_key_id</code> / <code>secret_access_key</code> / <code>endpoint</code> / <code>acl</code> / <code>no_check_bucket</code> / <code>chunk_size</code> / <code>upload_cutoff</code>）が s3 バックエンドに実在すること、
+        <code>provider</code> の選択肢に <code>Cloudflare</code> があることも <code>config providers</code> で確認した。<br>
+        <b>これにより G-04 第 1 案が確定し、secret をディスクに書かない設計が成立する。フォールバック（専用 rclone.conf の生成）は実装不要</b>
+        （§3.4 の第 2 案と、それに紐づく U-10 は本書から削除した）</td>
+    </tr>
+    <tr>
+      <td class="mono"><b>U-02</b></td>
+      <td><code>vfsOpt</code> の Duration / SizeSuffix はナノ秒・バイトの整数で渡す</td>
+      <td><b>✅ 成立。</b> <code>{"CacheMode":"full","WriteBack":15000000000,"DirCacheTime":60000000000,"CacheMaxSize":10737418240}</code>
+        および <code>mountOpt</code> の <code>{"AttrTimeout":5000000000}</code> がエラーなく受理され、マウントが成立した。
+        <b>§6.2 の数値表記をそのまま使うこと</b></td>
+    </tr>
+    <tr>
+      <td class="mono"><b>U-04</b></td>
+      <td><span class="api">operations/copyfile</span> 等でオブジェクトメタデータ（<code>Cache-Control</code>）を付与できる<br><span class="cm">（v1.3 の <code>uploadfile</code> は M-13 により <code>copyfile</code> へ変更）</span></td>
+      <td><b>⚠️ 形式の受理までしか確認できていない（実付与は未検証）。</b><br>
+        確認できたのは、<code>_config</code> に <b>配列形式</b>で渡すと
+        <code class="mono" style="font-size:11px">"_config":{"UploadHeaders":[{"Key":"Cache-Control","Value":"public, max-age=31536000, immutable"}]}</code>
+        が<b>エラーなく受理され</b> <span class="api">operations/copyfile</span> が完了すること、および <code>options/get</code> の <code>main</code> ブロックに <code>UploadHeaders</code> が存在することのみ。<br>
+        <b>検証に使った <code>type=local</code> バックエンドには HTTP ヘッダという概念が存在しないため、
+        「付与された」ことと「パラメータが受理されて無視された」ことの区別がついていない。</b><br>
+        <b>本当に確かめるべきこと</b>: R2 がこれをオブジェクトメタデータとして保存し、<code>{publicBaseURL}/{key}</code> への GET が
+        <code>Cache-Control</code> レスポンスヘッダを返すこと。<br>
+        <b>検証（§4.4 手順 5 の拡張として実施・G1-9）</b>: 接続テストのプローブを <code>UploadHeaders</code> 付きで PUT し、
+        手順 5 の GET で <b>レスポンスヘッダに <code>Cache-Control</code> が含まれるか</b>を確認する（手順 5 が既にあるため追加コストはほぼゼロ）。<br>
+        <b>失敗時</b>: <code>immutableCacheControl</code> 機能を v1.0 スコープから外す。
+        <b>この検証を経ずに当該機能を出荷してはならない</b></td>
+    </tr>
+    <tr>
+      <td class="mono"><b>U-05</b></td>
+      <td>rcd の待受ポートを出力から取得できる</td>
+      <td><b>⚠️ 成立するが、出力先が本書の記述と違った。</b> ポートは <b>stdout ではなく stderr</b> に
+        <code>NOTICE: Serving remote control on http://127.0.0.1:{port}/</code> の形式で出る（stdout は空）。<br>
+        <b>v1.1 までの「標準出力から読み取る」という記述は誤りであり、v1.2 で全 5 箇所を修正した。
+        stdout を読む実装にすると永久に待ち続ける</b></td>
+    </tr>
+    <tr>
+      <td class="mono"><b>U-08</b></td>
+      <td><code>mount/mount</code> に渡した <code>_filter</code> の除外ルールが長命な VFS に持続適用される</td>
+      <td><b>✅ 成立。</b> <code>"_filter":{"ExcludeRule":[".DS_Store","._*"]}</code> を付けてマウントし、
+        ソース側に実在する <code>.DS_Store</code> と <code>._resource</code> が<b>マウント先で見えない</b>ことを <code>ls -a</code> で確認した。
+        §6.3 第 1 層はこの形式で実装する</td>
+    </tr>
+    <tr>
+      <td class="mono"><b>U-09</b></td>
+      <td>DD-001 §6.3 の厳守フラグ <code>--nfs-cache-handle-limit 1000000</code> を渡せる</td>
+      <td><b>✅ 指定自体が不要だった。</b> <code>options/get</code> の <code>nfs</code> ブロックに
+        <code>HandleLimit: 1000000</code> が既定値として存在し、<b>DD-001 が指定していた値と一致している</b>。<br>
+        将来デフォルトが変わった場合に備えて明示したい場合は、環境変数ではなく
+        <span class="api">options/set</span> に <code>{"nfs":{"HandleLimit":1000000}}</code> を渡す（実測で反映を確認済み）。<br>
+        <b>§6.1 の環境変数リストから <code>RCLONE_NFS_CACHE_HANDLE_LIMIT</code> を削除し、起動後に options/set で明示する方式に変更した</b></td>
+    </tr>
+    <tr>
+      <td class="mono"><b>U-11</b></td>
+      <td><code>mount/mount</code> がマウント完了後に即座に制御を返す</td>
+      <td><b>✅ 成立。</b> <code>mount/mount</code> の呼び出しから応答まで <b>0.036 秒 / 0.030 秒</b>（2 回計測）。
+        §6.5 のとおり<b>同期で呼んでよい</b>。<code>_async</code> + <span class="api">job/status</span> 方式への切替は不要。<br>
+        <b>ただしこの数値は S3 へ持ち越せない</b> — S3 バックエンドではマウント時に <code>NewFs</code> が疎通のラウンドトリップを行うため応答時間の桁が変わり、
+        <b>認証情報が誤っていればマウント自体が失敗しうる</b>（接続テスト時ではなく<b>マウント時に認証エラーが出る経路</b>が存在する。§10 E-15）。
+        「同期で呼んでよい」という結論はおそらく維持されるが、<b>数値と「失敗しない」という含意は G1-9 で再確認すること</b></td>
+    </tr>
+    <tr>
+      <td class="mono"><b>U-12</b></td>
+      <td><code>vfsOpt</code> の <code>"ReadOnly": true</code> がマウント単位で書込みを拒否する（<b>G-08 の実現機構</b>）</td>
+      <td><b>✅ 成立。G-08 の設計が実証された。</b> 同一の rcd プロセスから同じソースを 2 箇所にマウントし、
+        <code>ReadOnly: true</code> 側では<b>書込みが <code>permission denied</code>、削除が <code>Input/output error</code> で拒否</b>され、<span class="cm">（M-17: 実測では <b>既存ファイルの上書きが <code>EBADRPC</code>「RPC struct is bad」</b>になり、計 3 種類ある）</span>
+        <code>ReadOnly: false</code> 側では<b>書込みが成功</b>した。<br>
+        <b>マウント単位で独立に効くため、public だけを read-only にする構成が成立する。</b>
+        U-12 に記載していた代替案（rcd 2 本立て / public をマウントしない）は<b>不要</b></td>
+    </tr>
+    <tr>
+      <td class="mono"><b>CRIT-01</b></td>
+      <td><span class="api">mount/types</span> に <code>nfsmount</code> が含まれる</td>
+      <td><b>✅ 含まれる。ただし本書の前提が一部誤っていた。</b> 実測の応答は <code>["cmount", "nfsmount"]</code> で、
+        <b><code>mount</code>（FUSE 版）は登録されていない</b>。<br>
+        v1.1 までは「省略時は mount → cmount → mount2 の順で解決」と書いていたが、実際には<b>省略すると <code>cmount</code> が選ばれる</b>。
+        いずれにせよ macFUSE 未導入では失敗するため <b><code>mountType: "nfsmount"</code> の明示は必須</b>という結論は変わらない（§3.2 CRIT-01 を修正済み）</td>
+    </tr>
+    <tr>
+      <td class="mono"><b>SEC-G01</b></td>
+      <td>認証なしの rc アクセスが拒否される</td>
+      <td><b>✅ 成立。</b> 認証ヘッダなしの <code>POST /mount/types</code> は <b>HTTP 401</b> を返した（T-G03 の期待結果を実測で確認）</td>
+    </tr>
+  </table>
+
+  <h4>未検証</h4>
+  <table>
+    <tr><th style="width:70px">ID</th><th style="width:220px">前提</th><th>状況 / 検証方法</th></tr>
+    <tr>
+      <td class="mono"><b>U-13</b></td>
+      <td><span class="api">operations/publiclink</span> で R2 の presigned URL を発行できる（<b>ゴール「URL ベースの共有」の半分</b>）</td>
+      <td><b>引数の形式は一次情報で確定。実発行は未検証。</b><br>
+        <b>確定した部分</b>: rcd の <span class="api">rc/list</span> が返す公式ヘルプに
+        <code>expire - string - the expiry time of the link e.g. "1d" (optional)</code> と明記されており、
+        <b><code>expire</code> は文字列で正しい</b>（<code>vfsOpt</code> の Duration が数値だったのとは扱いが異なる。§6.2 と混同しないこと）。
+        <code>fs</code> / <code>remote</code> / <code>unlink</code> / <code>expire</code> の 4 引数、戻り値 <code>url</code> も確認済み。<br>
+        <b>未検証の部分</b>: 検証に使った <code>type=local</code> は public link 非対応で
+        （<code>"Local file system at … doesn't support public links"</code> が返る）、<b>この API を実際に成功させたことが一度もない</b>。
+        S3 バックエンドでの署名生成・7 日上限の挙動・戻り値 URL の形式は未確認。<br>
+        <b>検証（G1-9）</b>: 実 R2 アカウントで <code>expire: "1m"</code> のリンクを発行し、<code>curl</code> で 200 が返ること、
+        61 秒後に 403 になることを確認する（T-G23 の前倒し実施）。<b>8 日を指定したときの挙動はソースで確定済み（M-11）</b> — <b>エラーにならず黙って 7 日に丸められる</b>ため、アプリ側のバリデーションが必須。実発行の検証ではこの丸めが実際に起きることを確認する</td>
+    </tr>
+  </table>
+
+  <h4>未検証（設計の骨格に影響しないもの）</h4>
+  <div class="box unverified">
+    <div class="box-t">UNVERIFIED — 実装時に解消すること</div>
+    <p style="margin-top:4px">
+      以下は実機検証を要するが、<b>いずれも設計の骨格を揺るがすものではない</b>。
+      <b style="color:#0a7">U-03 は v1.4 の実装時に解決した（entitlement は不要だった）</b> — ただし
+      <b>Developer ID 署名での再確認は G5-2 に残る</b>。U-06 は G5 まで、U-07 は v1.1 以降の検討事項である。
+    </p>
+  </div>
+  <table>
+    <tr><th style="width:70px">ID</th><th style="width:220px">前提</th><th>状況 / 検証方法</th></tr>
+    <tr>
+      <td class="mono">U-14</td>
+      <td><code>SMAppService.mainApp.register()</code> を登録済みの状態で、また <code>unregister()</code> を未登録の状態で再度呼んでも例外にならないか（§8.6.3）</td>
+      <td><b>未検証。</b> 冪等でない場合、起動のたびに登録を試みる実装がエラーになる。<br>
+        <b>回避（既定の実装方針）</b>: <code>status</code> を先に読み、望む状態と異なるときだけ <code>register()</code> / <code>unregister()</code> を呼ぶ。
+        この方針なら冪等性は担保されるため、<b>G5 で確認して簡略化できるかを判断すればよく、ブロッカーにはならない</b></td>
+    </tr>
+    <tr>
+      <td class="mono">U-03</td>
+      <td>Hardened Runtime 下で同梱 rclone を子プロセス実行するのに <code>disable-library-validation</code> が必要か（G-07）</td>
+      <td><b style="color:#0a7">✅ 解決（2026-08-31 の実装時）— 不要だった。</b>
+        Hardened Runtime を有効にした Release ビルド（<code>flags=0x10002(adhoc,runtime)</code>）で、
+        <code>com.apple.security.cs.disable-library-validation</code> を<b>付けずに</b>同梱 rclone を子プロセス実行できた。<br>
+        <b>理由</b>: library validation は「<b>プロセスに読み込む dylib</b>」に掛かる制約であり、
+        別プロセスとして <code>exec</code> する実行ファイルには掛からない。
+        <code>go/linking: dynamic</code> は rclone 自身が system dylib を読むという話で、それらは Apple 署名なので問題にならない。<br>
+        <b>entitlement はプロジェクトから削除した。</b><br>
+        <b>残る未検証</b>: この確認は <b>ad-hoc 署名</b>で行った。<b>Developer ID 署名での再確認は G5-2 に残る</b>（証明書が無いため未実測）。<br>
+        <b>検証手段</b>: <code>SkyFolder.app/Contents/MacOS/SkyFolder --selftest</code>
+        — Hardened Runtime は Xcode の実行やユニットテストのプロセスには掛からないため、この経路でしか確かめられない</td>
+    </tr>
+    <tr>
+      <td class="mono">U-06</td>
+      <td>R2 の料金（DD-001 §10 の単価）</td>
+      <td><b>要再確認。</b> DD-001 が「実装時に公式 pricing ページで再確認すること」と明記している。本アプリはコストを表示しないため設計には影響しない</td>
+    </tr>
+    <tr>
+      <td class="mono">U-07</td>
+      <td>FSEvents が localhost NFS マウント上で発火するか（<code>allowDirectWriteToPublic</code> を true にした場合の緩和策・v1.1 以降）</td>
+      <td><b>未検証。v1.0 のブロッカーではない。</b> G-08（public を read-only でマウント）が実測で成立したため、既定構成では直置き検知そのものが不要。<br>
+        <b>検証が必要になる時点</b>: 緩和策を v1.1 で実装すると決めたとき。<b>失敗時の代替</b>: <span class="api">operations/list</span> の定期差分</td>
+    </tr>
+  </table>
+
+  <h4>実装時に判明した設計事項（M-12〜M-22）</h4>
+  <div class="box crit">
+    <div class="box-t">IMPLEMENTED — 本書 v1.3 を実装した結果、なお 13 件の差分が出た</div>
+    <p style="margin-top:4px">
+      本書は 2 モデルの独立レビューと実機検証を経て v1.3 に達し、両レビュアーが APPROVE を出していた。
+      それを実装したところ、<b>なお 13 件の差分</b>が出た。うち <b>4 件（M-12 / M-13 / T-G30 / M-14）は、
+      本書の記述どおりに実装すると止まるか、機能が無言で壊れる</b>。該当箇所は本文でも訂正済み。<br>
+      <b>設計レビューは実装の代わりにならない</b> — レビューは「書かれていることの整合」を見るが、
+      書かれていない前提の誤り（API の実際の応答形式・フレームワークの意味論・署名の副作用）は、叩かないと分からない。<br>
+      全件の詳細は <code>docs/IMPLEMENTATION-NOTES.md</code>。
+    </p>
+  </div>
+  <table>
+    <tr><th style="width:70px">ID</th><th style="width:220px">事実</th><th>設計への反映</th></tr>
+    <tr>
+      <td class="mono"><b>M-12</b></td>
+      <td><b><code>--log-file</code> を付けるとポートは stdout にも stderr にも出ない</b></td>
+      <td>§6.1 が必須としている <code>--log-file</code> を指定すると、<b>stdout も stderr も 0 バイト</b>になり、
+        <code>NOTICE: Serving remote control on …</code> は<b>ログファイル</b>に出る。<br>
+        v1.2 で「stdout ではなく stderr」と 1 度訂正していたが、それは <code>--log-file</code> なしで測った結果だった。
+        <b>stderr を読む実装も永久に待つ。</b><br>
+        <b>反映</b>: §6.1 MUST / §8.1 手順 4 / G1-7 / T-G02 を訂正。
+        ログは再起動をまたいで追記されるため、<b>起動前のサイズを記録しそこから後ろだけを走査する</b>
+        （しないと前回の古いポートを掴む）</td>
+    </tr>
+    <tr>
+      <td class="mono"><b>M-13</b></td>
+      <td><b><code>operations/uploadfile</code> は <code>_async</code> で jobid を返さない</b></td>
+      <td><code>uploadfile</code> は multipart/form-data で、<code>_async</code> を form field で渡しても
+        <b>jobid を返さず同期実行</b>される（応答は <code>{}</code>）。<code>job/status</code> でのポーリング経路が存在せず、
+        <b>G4 の AC「ジョブの完了を待ってから URL をコピーする」が原理的に成立しない</b>。<br>
+        <code>operations/copyfile</code> は <code>_async</code> で <code>{"jobid": N}</code> を返し、
+        <code>_config.UploadHeaders</code>（U-04）も受理する。<br>
+        <b>反映</b>: §3.5 / §4.4 手順 3・5 / §7.1 / §7.3 手順 4 / §14.1 U-04 を <code>copyfile</code> へ訂正。
+        ローカル側のリモートが要るので <code>RCLONE_CONFIG_LOCAL_TYPE=local</code> を §6.1 の環境変数に追加</td>
+    </tr>
+    <tr>
+      <td class="mono"><b>M-14</b></td>
+      <td><b><code>operations/movefile</code> は移動先が存在しても黙って上書きする</b></td>
+      <td>§8.6.3 は「失敗しうる」を前提にフォールバックを規定していたが、実測では<b>失敗しない</b>。
+        危険は逆向きで、<b>取り下げを二度押しすると先に退避した <code>gone/{key}</code> を失う</b>。<br>
+        <b>反映</b>: §8.6.3 と T-G36 を訂正。移動の前に <span class="api">operations/stat</span> で存在を確かめる</td>
+    </tr>
+    <tr>
+      <td class="mono"><b>M-15</b></td>
+      <td><b>ImageIO のメタデータ除去は「載せない」だけでは効かない</b>（SEC-08 が無言で壊れる）</td>
+      <td>§7.4 は「プロパティ辞書から下記を<b>除去</b>する」と書いており、素直に読むと
+        「出力の properties にそのキーを載せなければ落ちる」と解釈できる。<b>それでは落ちない。</b><br>
+        <code>CGImageDestinationAddImageFromSource</code> の <code>properties</code> は<b>元のメタデータとマージ</b>される。
+        実装当初これで書いたところ <b>GPS も Exif も IPTC もそのまま出力に残った</b>（テストで検出）。
+        消すには各キーに <b><code>kCFNull</code> を明示</b>する必要がある。ネストした辞書（TIFF の Make / Model / Software）も同じ。<br>
+        <b>SEC-08（MUST）と G-08 の目的そのものが無言で無効化される</b>類の欠陥で、
+        「公開画像から GPS が消えている」ことを実際に検査するテストが無ければ気づけない。<br>
+        <b>除去後に残るもの</b>: <code>{Exif}</code> の <code>ColorSpace</code> / <code>PixelXDimension</code> /
+        <code>PixelYDimension</code> は ImageIO が JPEG 書き出し時に必ず付け直す（識別情報ではない）。
+        検査は「Exif 辞書が空か」ではなく<b>「識別情報のキーが残っているか」</b>で行う</td>
+    </tr>
+    <tr>
+      <td class="mono"><b>M-16</b></td>
+      <td><b>Orientation は消せない</b>（DD-001 F-16 の懸念はこの経路では発生しない）</td>
+      <td><code>CGImageDestinationAddImageFromSource</code> は Orientation を<b>無条件に引き継ぐ</b>。
+        <code>kCGImagePropertyOrientation</code> にも <code>{TIFF}.Orientation</code> にも
+        <code>kCFNull</code> を明示しても消えない（実測）。<br>
+        DD-001 F-16 は「剥がすと横倒しになる」を必須要件としていたが、<b>この経路では剥がすこと自体ができない</b>。
+        実装に明示的な保持コードを残す場合は、<b>mutation で等価変異と確認したうえで</b>
+        「これは効いていない」とコメントに書くこと（守っているつもりの行を黙って残さない）</td>
+    </tr>
+    <tr>
+      <td class="mono"><b>M-17</b></td>
+      <td><b>read-only 拒否の errno は 3 種類。しかもログとは別物</b></td>
+      <td><b>(1)</b> クライアント側の errno は 3 種類: 新規作成 <code>EACCES</code>(13) /
+        <b>既存の上書き <code>EBADRPC</code>(72)「RPC struct is bad」</b> / 削除・リネーム <code>EIO</code>(5)。
+        M-02 は 2 つしか挙げていなかった。<br>
+        <b>(2)</b> ところが E-14 はログ監視で検知する設計であり、<b>これらの errno はログに出ない</b>。
+        INFO で出るのは <code>ERROR : nfs: Error Creating: Read only file system</code> の 1 種類だけ。<br>
+        <b>(3) 削除とリネームは INFO でも DEBUG でも 1 行も出ない</b>。
+        したがって E-14 で案内できるのは<b>書込み試行のときだけ</b>である。<br>
+        <b>反映</b>: E-14 の検知手段と U-12 を訂正</td>
+    </tr>
+    <tr>
+      <td class="mono"><b>M-18</b></td>
+      <td><b>パス表現の非対称</b> — rclone は保存、OS は解決</td>
+      <td><span class="api">mount/mount</span> と <span class="api">mount/listmounts</span> は
+        <b>渡した表現のまま</b>返す（<code>/var/folders/…</code>）。
+        OS のマウント表（<code>getmntinfo</code> / <code>mount</code>）は<b>symlink を解決した</b>パスを返す
+        （<code>/private/var/folders/…</code>）。<br>
+        macOS では <code>/var</code> → <code>/private/var</code>、<code>/tmp</code> → <code>/private/tmp</code> が symlink。
+        <b>§8.4 手順 2 で OS 側と比較するときだけは両側を解決してから突き合わせる</b>。
+        rclone の応答同士の比較には解決は要らない</td>
+    </tr>
+    <tr>
+      <td class="mono"><b>M-19</b></td>
+      <td><b><code>Thread.sleep</code> を actor 内で回すと協調スレッドプールを塞ぐ</b></td>
+      <td>§8.3 / §8.6.2 (b) の「SIGTERM → 5 秒待って SIGKILL」を <code>Thread.sleep</code> で書いて
+        actor から呼ぶと、協調スレッドプールのスレッドを最大 5 秒占有する。
+        アプリ終了時に他の <code>Task</code>（未送信データの確認・ポーリングの停止）が進まなくなる。<br>
+        <b>非同期文脈からは <code>Task.sleep</code> を使う版を呼ぶこと</b></td>
+    </tr>
+    <tr>
+      <td class="mono"><b>M-20</b></td>
+      <td><b>Finder のメタデータ作成で E-14 が誤発火する</b></td>
+      <td>read-only マウントを Finder で開くだけで macOS は <code>._*</code>（AppleDouble）や
+        <code>.DS_Store</code> の作成を試み、そのたびに拒否ログが出る（実測で <code>._existing.txt</code> を観測）。<br>
+        通知をそのまま出すと<b>ユーザーが何もしていないのに警告が鳴り続ける</b>。これらを通知対象から除外する。<br>
+        §6.3 の <code>_filter</code> 除外はマウント先での<b>可視性</b>を制御するだけで、
+        Finder が作成を<b>試みる</b>こと自体は止められない（DD-001 R-10 が指摘していた現象そのもの）</td>
+    </tr>
+    <tr>
+      <td class="mono"><b>M-21</b></td>
+      <td><b>再起動時の rc 認証情報が「呼び出し側の書き方」に依存していた</b>（SEC-G01）</td>
+      <td>SEC-G01 は「rc-user / rc-pass は<b>プロセス起動ごとの乱数</b>」と規定している。
+        rcd の起動仕様を呼び出し側のクロージャから受け取る素朴な実装では、
+        <b>クロージャが同じ値を返すと再起動後も同じ認証情報が使い回される</b>。SEC-G01 が黙って破れる。<br>
+        <b>rcd を起動する側が、起動のたびに必ず認証情報を作り直すこと。</b>
+        安全性を「呼び出し側が毎回新しく組み立てる」という慣習に依存させない
+        — G-08 が「検知ではなく構造で消す」ことにしたのと同じ考え方</td>
+    </tr>
+    <tr>
+      <td class="mono"><b>M-22</b></td>
+      <td><b>環境変数で渡す設定は「保存しても効かない」経路を作る</b></td>
+      <td>リモート定義（accountId・認証情報）とグローバルオプション（transfers・チャンクサイズ）は
+        §6.2 注入経路表のとおり<b>環境変数でしか渡せない</b>ので、rcd のプロセス起動時にしか反映できない。<br>
+        rcd が既に走っているときに何もしない実装だと、<b>設定画面で Account ID やトークンを変えて保存しても反映されない</b>。
+        ユーザーには「保存しました」と出るのに効かない。<br>
+        <b>環境変数の指紋を持ち、変わったときだけ rcd を作り直す。</b>
+        作り直しは全マウントの解除を伴うので、<code>vfsOpt</code> で渡す設定（キャッシュ上限・書き戻し間隔・
+        ディレクトリキャッシュ）の変更では再起動しないこと。
+        <b>作り直す前に未送信データを確認する</b>（R-G08 と同じ理由。省くと設定保存だけでデータ喪失が起きる）</td>
+    </tr>
+  </table>
+
+  <h4>実測で判明した追加の設計事項（M-01〜M-11）</h4>
+  <p>
+    検証の過程で、v1.1 までの設計に書かれていなかった事実が 11 件見つかった。いずれも実装に影響する。<br>
+    <span class="g">ID に <code>M-</code>（Measured）を使うのは、DD-001 が <code>F-01</code>〜<code>F-18</code> をセルフレビュー記録に使っており、本書もそれを頻繁に参照するため。
+    <b>裸の「F-01」が 2 つの別内容を指す状態を避ける</b>（G-xx と D-xx を分けたのと同じ理由）。</span>
+  </p>
+  <table>
+    <tr><th style="width:70px">ID</th><th style="width:200px">事実</th><th>設計への反映</th></tr>
+    <tr>
+      <td class="mono"><b>M-01</b></td>
+      <td><b>read-only マウントは OS レベルでは read-only とマークされない</b></td>
+      <td><code>mount</code> コマンドの出力は <code>(nfs, nodev, nosuid, mounted by …)</code> で、<b><code>read-only</code> フラグが付かない</b>。
+        拒否は rclone の VFS 層で行われる。<br>
+        <b>帰結: Finder はボリュームを書込み可能と認識し、ドラッグ&ドロップを許可してから失敗する。</b>
+        したがって「Finder が事前に止めてくれる」ことを期待してはならず、
+        <b>§5.2 の「読み取り専用」バッジと、失敗時の分かりやすい案内（§10 E-14）が必須</b>になる</td>
+    </tr>
+    <tr>
+      <td class="mono"><b>M-02</b></td>
+      <td>read-only 時のエラー種別が操作によって異なる</td>
+      <td>書込みは <code>permission denied</code>、削除は <b><code>Input/output error</code></b> だった。後者は原因が読み取れないメッセージである。<br>
+        <b>ただし OS（Finder）が出すダイアログはアプリから抑制できない</b>（M-01 のとおりアプリは拒否の経路に居ない）。
+        できるのは <b>rclone のログを監視して失敗を検知し、OS のダイアログに<u>加えて</u>「公開バケットは読み取り専用です。公開するには共有ダイアログをお使いください」と案内すること</b>までである（E-14）。
+        <b>「OS のエラー文を見せない」ことは達成できないので、そう約束する実装計画を立ててはならない</b></td>
+    </tr>
+    <tr>
+      <td class="mono"><b>M-03</b></td>
+      <td><code>vfs/stats</code> の「未送信」を表す具体的なキー</td>
+      <td>応答の <code>diskCache</code> ブロックに <code>uploadsQueued</code> / <code>uploadsInProgress</code> / <code>bytesUsed</code> /
+        <code>files</code> / <code>erroredFiles</code> / <code>outOfSpace</code> がある。<br>
+        <b>§5.2 の「未送信 N 件」は <code>uploadsQueued + uploadsInProgress</code> で算出する。</b>
+        <code>erroredFiles</code> が 0 でない場合は別途エラー表示を出す（黙って失敗させない）。<br>
+        <b>確認できたのはキー名の実在までである</b> — 検証に使った <code>type=local</code> ではアップロードキューが発生しないため、
+        <b><code>uploadsQueued</code> が実際に増減する挙動は見ていない</b>。G1-9 ⑥ と T-G13 で裏を取ること</td>
+    </tr>
+    <tr>
+      <td class="mono"><b>M-11</b></td>
+      <td><b><code>operations/publiclink</code> の 3 つの落とし穴</b>（rclone ソース <code>backend/s3/s3.go</code> で確認）</td>
+      <td><b>(1) <code>unlink</code> 引数は S3 で完全に無視される。</b>
+        <code>func (f *Fs) PublicLink(ctx, remote string, expire fs.Duration, unlink bool)</code> のシグネチャに存在するが、
+        <b>本体での出現回数は 0</b>。エラーも返らないため<b>「unlink で失効させられた」と誤認する導線</b>になる。アプリは送らない（§7.2）。<br>
+        <b>(2) 期限の上限超過は、エラーではなく黙って切り詰められる。</b>
+        <code>maxExpireDuration = fs.Duration(7 * 24 * time.Hour)</code> で、超過すると
+        <code>fs.Logf</code> でログに出したうえで <code>expire = maxExpireDuration</code> に丸める。
+        <b>呼び出し側にエラーは返らない</b>ため、<b>アプリ側のバリデーションが必須</b>（§7.2）。<br>
+        <b>(3) ディレクトリは共有できない</b> — 末尾 <code>/</code> には <code>fs.ErrorCantShareDirectories</code>。<br>
+        <span class="g">※ この 3 点は <b>G4-0（共有経路の通し点検）を先取りして実施した結果</b>である。
+        <code>type=local</code> では publiclink 自体を叩けないため、ソースの読解で代替した。実発行の検証は G1-9 ④ で行う</span></td>
+    </tr>
+    <tr>
+      <td class="mono"><b>M-10</b></td>
+      <td><b>アイコンは 16px で完全に潰れる。32px なら判別できる</b></td>
+      <td>現物（904×904）を 1024px へ拡大し、そこから 16 / 32 / 128px を生成して目視確認した（拡大して比較）。<br>
+        <b>16×16</b>: 線画が潰れ、フォルダの輪郭がかろうじて分かる程度。<b>雲・上向き矢印・表情はまったく判別できない</b>。<br>
+        <b>32×32</b>: フォルダ・雲・表情が読める。矢印は細いがぎりぎり見える。<br>
+        <b>帰結</b>: A-04 の「潰れる場合は別版」という条件付きの記述は誤りで、<b>16pt 用の別版は必須</b>。
+        同じ問題は<b>メニューバーアイコン（16〜18pt・A-06）にも及ぶ</b>ため、両者をまとめて設計する。<br>
+        <b>なお切り出し・拡大・縮小はすべて macOS 標準の <code>sips</code> だけで実行できることを確認した</b>（<code>scripts/make-assets.sh</code> に外部依存が要らない）</td>
+    </tr>
+    <tr>
+      <td class="mono"><b>M-09</b></td>
+      <td><b>孤児 rcd による「状態の単一情報源」の破綻を再現し、回収手順の有効性を実証した</b></td>
+      <td>旧 rcd がマウントを保持したまま新 rcd を起動すると、<b>新 rcd の <span class="api">mount/listmounts</span> は 0 件を返すが OS 上にはマウントが実在する</b>（実測）。
+        §02 の DESIGN INVARIANT がこの状況で成立しなくなることを、机上ではなく実機で確認した。<br>
+        続けて §8.6.2 (b) の回収手順（PID 照合 → <code>SIGTERM</code>）を実行し、<b>rcd 0 本 / マウント 0 件</b>まで解消できることを確認した。
+        <b>CRIT-03 の対策は設計どおり機能する</b></td>
+    </tr>
+    <tr>
+      <td class="mono"><b>M-08</b></td>
+      <td><b><code>SIGTERM</code> で rcd のマウントは自動解除される</b></td>
+      <td>マウント中の rcd に <code>SIGTERM</code> を送ったところ、<b>プロセス終了と同時にマウントが <code>mount</code> の出力から消えた</b>（実測）。<br>
+        <b>帰結</b>: 孤児 rcd の回収（§8.6.2 (b)）で <span class="api">mount/unmountall</span> を呼ぶ必要がない。
+        これは重要で、<b>孤児の rc-user / rc-pass は失われているため RC API は 401 になり呼べない</b>（SEC-G01 が認証情報を永続化しないため）。
+        <code>SIGTERM</code> だけで完結するという事実が、<b>「認証情報を永続化しない」という原則と「孤児を回収する」という要求を両立させている</b>。<br>
+        <span class="g">※ <code>SIGKILL</code> まで進んだ場合はクリーンアップが走らないため、§8.4 手順 2 の例外規定（自分由来のマウントは umount してよい）が必要になる</span></td>
+    </tr>
+    <tr>
+      <td class="mono"><b>M-07</b></td>
+      <td><b>nfsmount のエラーにも「FUSE」という文言が出る</b></td>
+      <td>すでにマウント済みの mountPoint へ <code>mount/mount</code> を呼ぶと
+        <code>failed to mount <b>FUSE fs</b>: mount: localhost:/ is already mounted at {path}: failed to mount NFS volume: exit status 78</code> が返る。
+        <b><code>mountType: "nfsmount"</code> を指定していても「FUSE」と表示される</b>（rclone のエラーメッセージが実装間で共通のため）。<br>
+        <b>この文言を見て「macFUSE が必要なのでは」と誤診断してはならない。</b>
+        エラーの実体は末尾の <code>exit status 78</code>（already mounted）である。
+        §10 のエラー分類はメッセージ先頭ではなく<b>末尾の実体で判定すること</b></td>
+    </tr>
+    <tr>
+      <td class="mono"><b>M-05</b></td>
+      <td>環境変数で定義したリモートは <span class="api">config/dump</span> に<b>現れない</b></td>
+      <td><code>config/dump</code> の応答は空オブジェクトになる（環境変数由来の設定は config ファイルの内容ではないため）。<b>これは異常ではない。</b><br>
+        <b>帰結 1</b>: 診断画面で「リモートが定義されているか」を <code>config/dump</code> で確認する実装をしてはならない。<b>確認は <span class="api">operations/list</span> の成否で行う</b>（§4.4 接続テストと同じ方法）。<br>
+        <b>帰結 2（利点）</b>: <b><code>config/dump</code> に Access Key ID も Secret も出ない</b>ため、診断画面でこの API の応答をそのまま表示しても認証情報が漏れない</td>
+    </tr>
+    <tr>
+      <td class="mono"><b>M-06</b></td>
+      <td>rclone のエラーメッセージに <b>endpoint（＝ accountId）が含まれる</b></td>
+      <td>S3 操作の失敗時、エラー本文に <code>https://{accountId}.r2.cloudflarestorage.com/...</code> が含まれる。
+        accountId は秘密情報ではないが、<b>ユーザーが診断ログを第三者に共有する場面</b>では意図せず開示される。<br>
+        <b>SEC-G04 のマスク処理では、Secret・presigned 署名・rc-user に加えて accountId もマスク対象に含める</b>（<code>{accountId}</code> → <code>{account-id}</code> のような置換で足りる。診断の役には立つため完全な削除はしない）</td>
+    </tr>
+    <tr>
+      <td class="mono"><b>M-04</b></td>
+      <td>rc の <b>ユーザー名がログに平文で出る</b></td>
+      <td>起動時に <code>INFO : Using --user {rc-user} --pass XXXX as authenticated user</code> が出力される。
+        <b>パスワードはマスクされるが、ユーザー名は平文。</b><br>
+        鍵はパスワード側なので実害は小さいが、<b>SEC-G04 のログマスク処理では rc-user もマスク対象に含める</b>
+        （診断画面でログを表示する際、認証情報の一部が見えることを避けるため）</td>
+    </tr>
+  </table>
+
+
+  <h3>14.2 用語</h3>
+  <table>
+    <tr><th style="width:180px">用語</th><th>定義</th></tr>
+    <tr><td class="mono">rcd</td><td>rclone の remote control daemon。HTTP で RC API を提供する常駐モード。本アプリのバックエンド</td></tr>
+    <tr><td class="mono">RC API</td><td>rclone の remote control API。<code>mount/*</code> <code>operations/*</code> <code>vfs/*</code> <code>core/*</code> <code>job/*</code> 等の名前空間を持つ</td></tr>
+    <tr><td class="mono">プロファイル</td><td>本アプリの設定単位。1 つの Cloudflare アカウント + 1 組の認証情報 + 1 個以上のバケット定義からなる</td></tr>
+    <tr><td class="mono">alias</td><td>バケットの表示名かつマウントパスの末尾要素。実バケット名とは独立</td></tr>
+    <tr><td class="mono">ダーティ項目</td><td>VFS キャッシュ上に存在するがまだクラウドへ送信されていないファイル。<code>vfs/stats</code> で取得</td></tr>
+    <tr><td class="mono">nfsmount</td><td>rclone がローカルに NFS サーバを起動し OS 標準 NFS クライアントでマウントする方式。FUSE 系ドライバ不要（DD-001 §14.2 継承）</td></tr>
+    <tr><td class="mono">Hardened Runtime</td><td>コード注入やメモリ改ざんを制限する macOS のランタイム保護。notarization の必須要件</td></tr>
+  </table>
+
+  <h3>14.3 参照</h3>
+  <ul class="plain">
+    <li><b>FL-R2FS-DD-001 v1.4</b> — <code>docs/FL-R2FS-DD-001_v1.4.html</code>（本書の前提。技術基盤・R2 側構築手順・コスト設計はすべてこちらを参照）<br>
+      <span class="mono" style="font-size:12px">※ 旧ファイル名 <code>_v1.3.html</code> は、内容（v1.4）と表記が食い違い版を取り違える導線になっていたため、本書 v1.1 の作業時に <code>_v1.4.html</code> へ改名し、フッタと §14.4 見出しの版表記も実態に合わせた。<b>設計内容には一切変更を加えていない。</b></span></li>
+    <li>rclone RC API リファレンス — <code>rclone.org/rc/</code>（本書 §06 の全エンドポイント仕様の出典）</li>
+    <li>rclone nfsmount — <code>rclone.org/commands/rclone_nfsmount/</code></li>
+    <li>rclone ソース <code>cmd/nfsmount/nfsmount.go</code> — <code>mountlib.AddRc("nfsmount", mount)</code> の確認元（CRIT-01 の根拠）</li>
+    <li>rclone ソース <code>cmd/mountlib/rc.go</code> — <code>mount/*</code> エンドポイントのパラメータと mountType のデフォルト解決順の確認元</li>
+    <li>R2 Presigned URLs — <code>developers.cloudflare.com/r2/api/s3/presigned-urls/</code></li>
+    <li>R2 Public buckets / Custom domains — <code>developers.cloudflare.com/r2/buckets/public-buckets/</code></li>
+    <li>fuse-t（FSKit backend の現状） — <code>fuse-t.org</code> / <code>github.com/macos-fuse-t/fuse-t</code>（G-03 の再評価根拠）</li>
+    <li>Apple — <code>SMAppService</code> / <code>MenuBarExtra</code> / ImageIO / Keychain Services / notarytool の各公式ドキュメント（実装時に参照）</li>
+  </ul>
+
+  <h3>14.4 改版履歴</h3>
+  <table>
+    <tr><th style="width:60px">Ver</th><th style="width:100px">Date</th><th>変更内容</th></tr>
+    <tr><td class="mono"><b>1.4</b></td><td class="mono">2026-08-31</td><td><b>実装の反映。本書 v1.3 を実際に実装した結果、判明した差分を本文へ取り込んだ版。</b><br>
+      <b>【本書の記述どおりに実装すると止まる・壊れるもの 4 件を訂正】</b>
+      <b>(M-12)</b> §6.1 が必須としている <code>--log-file</code> を付けると、rcd の待受ポートは
+      <b>stdout にも stderr にも出ずログファイルに出る</b>。v1.2 で「stdout ではなく stderr」と 1 度訂正していたが、
+      それは <code>--log-file</code> なしで測った結果で、<b>stderr を読む実装も永久に待つ</b>。§6.1 MUST / §8.1 手順 4 / G1-7 / T-G02 を訂正。
+      <b>(M-13)</b> §7.3 手順 4 の <code>operations/uploadfile（_async: true）</code> は成立しない —
+      <code>uploadfile</code> は multipart で <code>_async</code> を渡しても jobid を返さず同期実行されるため、
+      <b>G4 の AC「ジョブの完了を待ってから URL をコピー」が原理的に作れない</b>。<code>operations/copyfile</code> へ変更（§3.5 / §4.4 / §7.1 / §7.3 / §14.1 U-04）。
+      <b>(T-G30)</b> G0-3（同梱バイナリの個別署名）と T-G30（ハッシュが記録と一致）が<b>両立しない自己矛盾</b>だった —
+      署名するとハッシュは必ず変わる。照合対象を「配布物（署名前）のハッシュ」に変更。
+      <b>(M-14)</b> §8.6.3 の取り下げは前提が逆だった — <code>operations/movefile</code> は移動先が存在しても
+      <b>エラーにならず黙って上書きする</b>。二度押しで先の退避を失う。移動前の <span class="api">operations/stat</span> を必須化（T-G36 も訂正）。<br>
+      <b>【未検証事項の解消】</b> <b>U-03 を解決</b> —
+      <code>com.apple.security.cs.disable-library-validation</code> は<b>不要</b>だった。
+      Hardened Runtime 下（ad-hoc 署名）で同梱 rclone を子プロセス実行できることを実測。
+      library validation は「プロセスに読み込む dylib」の制約で、<code>exec</code> する別プロセスには掛からないため。
+      <b>Developer ID 署名での再確認は G5-2 に残る</b>。<br>
+      <b>【設計書に無かった落とし穴 M-15〜M-22 を §14.1 に追加】</b>
+      特に <b>M-15</b> は重大で、§7.4 の「除去する」を素直に実装すると
+      <b>GPS も Exif も IPTC も出力に残る</b>（ImageIO の properties はマージのため <code>kCFNull</code> の明示が要る）。
+      SEC-08（MUST）と G-08 の目的が無言で無効化される。実際に検査するテストが無ければ気づけない。
+      ほかに <b>M-16</b>（Orientation は消せない＝ DD-001 F-16 の懸念はこの経路では発生しない）、
+      <b>M-17</b>（read-only 拒否の errno は 3 種類で、しかも<b>ログには出ない</b>。E-14 の検知語を訂正）、
+      <b>M-18</b>（rclone はパス表現を保存し OS は symlink を解決する非対称）、
+      <b>M-19</b>（<code>Thread.sleep</code> を actor 内で回すと協調スレッドプールを塞ぐ）、
+      <b>M-20</b>（Finder の <code>._*</code> 作成で E-14 が誤発火する）、
+      <b>M-21</b>（再起動時の rc 認証情報が呼び出し側の書き方に依存し SEC-G01 が黙って破れる）、
+      <b>M-22</b>（環境変数で渡す設定は「保存しても効かない」経路を作る）。<br>
+      <b>【学び】</b> 本書は 2 モデルの独立レビュー（観点分割）と実機検証を経て APPROVE されていたが、
+      それでも実装したら 13 件の差分が出た。<b>資料の完成度と実装可能性は別の軸で、前者をいくら上げても後者は保証されない。</b>
+      レビューは「書かれていることの整合」を見るが、書かれていない前提の誤り
+      （API の実際の応答形式・フレームワークの意味論・署名の副作用）は叩かないと分からない。<br>
+      <b>【検証の状況】</b> 自動テスト 130 件（単体 102 + rcd 統合 28）全通過。
+      署名済み <code>.app</code> の自己診断 19/19 通過。設計書の T-Gxx 39 件のうち 23 件を自動化。
+      残るのは実 R2（G1-9・<code>scripts/verify-r2.sh</code> で実行可能）と Developer ID 署名（T-G28 / T-G29）。</td></tr>
+    <tr><td class="mono"><b>1.3</b></td><td class="mono">2026-08-31</td><td><b>プロダクト名の確定とブランドアセットの統合（§15 新設）。</b><br>
+      <b>【プロダクト名】</b> <code>docs/design/logo.jpeg</code> により正式名称が <b>SkyFolder</b> と確定。本書が v1.2 まで仮名として使っていた「R2 Finder」を全面的に置き換えた。<br>
+      <b>【bundle identifier を確定・以後変更不可】</b> <code>dev.fracturelab.r2finder</code> → <b><code>dev.fracturelab.skyfolder</code></b>。
+      <b>リポジトリ名は将来変更予定だが、bundle identifier を追随させてはならない</b>と §15.1 に MUST として規定した —
+      変更すると <b>Keychain の項目にアクセスできなくなり（ユーザーは Secret の再入力を強いられる）、<code>SMAppService</code> のログイン項目が孤児になり、Application Support のプロファイル設定を見失う</b>。
+      実装前の今なら変更コストがゼロであるため、ここで確定させた。「リポジトリ名 / プロダクト名 / bundle id / Keychain service / マウントパス既定」の<b>変更可否を階層ごとに表で規定</b>し、
+      <b>ソースコード内でリポジトリ名を参照してはならない</b>と明記した。<br>
+      <b>【アセットを実測し、実装可能な形式とのギャップを A-01〜A-07 として定量化】</b> 現物は <b>2816×1536 の横長 JPEG</b> で、そのままではアプリに組み込めない:
+      アイコンの実描画領域は <b>904×904</b> で必要な 1024px に届かず（A-01）、<b>JPEG はアルファを持てず背景 #EFEFEF が焼き込まれている</b>（A-02）、
+      <b>すでに角丸が描かれているため OS のマスクと二重になりうる</b>（A-03）、16pt で線画が潰れるリスク（A-04）、
+      ロゴもダークモードで白い箱が浮く（A-05）、<b>メニューバー用のテンプレート画像が存在しない</b>（A-06・§5.5 の常駐 UI に必須）。<br>
+      <b>【ブランドカラーを実測で確定】</b> アイコン背景は <code>#6FB6ED</code>（上端）→ <code>#4997D6</code>（下端）のグラデーション、基準色 <b><code>#5DA7E4</code></b>、線画 <code>#FAFEFE</code>、ロゴ文字 <code>#555352</code>。
+      <b>§5.2 の「公開バケットを R2 オレンジで示す」との役割分担</b>（青＝アイデンティティ / オレンジ＝公開という危険側の警告）を明記し、<b>公開表示に青を使ってはならない</b>とした。<br>
+      <b>【アセットの生成を冪等にする】</b> <code>docs/design/</code> は原本置き場としてビルドに直接使わず、<code>scripts/make-assets.sh</code> で派生物を生成する。
+      手作業で書き出した派生物をリポジトリに置くと<b>原本を更新したときに再現できない</b> — §8.6 の冪等性と同じ考え方による。
+      アセット作業は <b>G0-4 / G0-5</b>（A-06 が無いと G3 の常駐 UI が止まるため）、本番差し替えは <b>G5-5</b> に配置した。<br>
+      <b>【アセットを実測して A-04 を確定事項へ格上げ（M-10）】</b> 現物から 16 / 32 / 128px を生成して目視確認したところ、
+      <b>16×16 では線画が完全に潰れ、雲・矢印・表情がまったく判別できなかった</b>（32×32 なら判別可能）。
+      v1.3 初版の「潰れる場合は別版を用意する」という条件付きの記述を、<b>「16pt 用の別版は必須」という確定事項に改めた</b>。
+      同じ問題は<b>メニューバーアイコン（16〜18pt・A-06）にも及ぶ</b>ため、両者をまとめて設計するよう規定した。
+      あわせて<b>切り出し・拡大・展開が macOS 標準の <code>sips</code> だけで完結する</b>ことを確認し、<code>make-assets.sh</code> に外部依存が不要であることを記録した。<br>
+      <b>【CRIT-03 の破綻を実機で再現し、回収手順を実証（M-09）】</b> 旧 rcd がマウントを保持したまま新 rcd を起動すると、
+      <b>新 rcd の <span class="api">mount/listmounts</span> は 0 件を返すが OS 上にはマウントが実在する</b>ことを確認した
+      — §02 の DESIGN INVARIANT がこの状況で偽になる。続けて §8.6.2 (b) の回収手順（PID の実行パス照合 → <code>SIGTERM</code>）を実行し、
+      <b>1 秒で終了・マウントも自動解除・rcd 0 本</b>まで解消できることを実証した。<br>
+      <b>【レビュー指摘の反映 — 共有経路の見落としを構造的に扱う】</b> 冪等性レビューで
+      <b>§8.6.1 の表から <span class="api">operations/publiclink</span> が落ちていた</b>ことが指摘された。
+      これは「エラーにならないから安全」ではなく<b>逆に危険側</b>で、2 回呼ぶと<b>署名の異なる有効な presigned URL が 2 本発行され、両方が生きる</b>。
+      SEC-G05 で URL を保存せず §7.2 で失効不可としているため、<b>二度押しで生まれた 2 本目は追跡も失効もできない公開面になる</b>。
+      発行要求の in-flight 中はボタンを無効化することを MUST として規定した。<br>
+      さらに<b>「共有経路だけが 4 ラウンド連続で見落とされ続けた」という傾向</b>が指摘されたため、
+      <b>G4-0「共有経路の通し点検」を G4 の最初のタスクとして新設</b>した（発行 → 二度押し → 履歴 → 失効不可 → staging → 取り下げを 1 本の線として点検する）。<br>
+      あわせて <b>§6.4 にポーリング応答の陳腐化規定</b>（状態変更より古い応答は破棄する）、
+      <b>§8.6.3 に <code>autoMount</code> のスコープ補足</b>（永続設定は起動時のみ評価し、実行中のアンマウントはセッションスコープに留める）、
+      <b>§15.1 の bundle id の新旧が同一文字列だった誤記</b>の修正、
+      <b>階層表に「R2 上のプローブキー prefix」と「VolumeName」を追加</b>（前者は唯一ユーザーのバケットに残る名前で、変更時は旧 prefix も掃除対象に含める必要がある）、
+      <b>A-03 に macOS 14/15 と macOS 26 でアイコンのマスク方式が異なる旨</b>を追記した。<br>
+      <b>【共有経路の通し点検を先取り実施 — M-11】</b> G4-0 を新設するだけでなく、その点検を<b>本改版で先取りして実施した</b>。
+      <code>type=local</code> では <span class="api">operations/publiclink</span> を叩けないため、<b>rclone のソース（<code>backend/s3/s3.go</code>）を読解して代替</b>し、3 件の落とし穴を発見した:
+      <b>(1) <code>unlink</code> 引数は S3 で完全に無視される</b>（シグネチャにあるが本体での出現回数 0）— エラーも返らないため<b>「失効させられた」と誤認する導線</b>になる。
+      <b>(2) 期限の上限超過はエラーではなく黙って 7 日に丸められる</b>（<code>maxExpireDuration</code>・<code>fs.Logf</code> でログに出すのみ）— <b>アプリ側のバリデーションが必須</b>である根拠。
+      <b>(3) ディレクトリは共有できない</b>（<code>fs.ErrorCantShareDirectories</code>）。
+      あわせて presigned が <code>PresignGetObject</code> による<b>ローカル計算で完結しサーバ側に状態を持たない</b>ことを確認し、§7.2 の「失効不可」が原理的な帰結であることの裏付けを得た。<br>
+      <span class="g">(c) が 4 ラウンド動かなかった原因は、<b>検証手段がないことを理由に点検を先送りしていた</b>ことにある。叩けないなら読めばよい、というのが本改版の学びである。</span><br>
+      <b>【最終レビューでの追随漏れを修正】</b> §8.6.2 (b) を SIGTERM 直行へ修正した際、<b>それを参照する §8.1 手順 0-b が旧手順（<code>mount/unmountall</code> 込み）のまま残っていた</b>のを修正。
+      なお <b>§8.3 の終了シーケンスの <code>mount/unmountall</code> は正しい</b> — アプリ終了時は自分が起動した rcd であり認証情報を保持しているため、両者を混同しないこと</td></tr>
+    <tr><td class="mono"><b>1.2</b></td><td class="mono">2026-08-30</td><td><b>実機検証の反映。設計上の推測を実測で置き換えた版。</b><br>
+      rclone <b>v1.75.0</b>（darwin-arm64）を <b>macOS 26.6.2 / arm64</b> 上で実際に起動し、RC API を叩いて前提条件を検証した（<code>type=local</code> のリモートを使用。RC API の挙動はバックエンドに依存しないため）。<br>
+      <b>【成立を確認】</b> U-01（環境変数のみでのリモート定義）/ U-02（vfsOpt の数値形式）/ U-04（<code>_config.UploadHeaders</code> による Cache-Control 付与）/ U-08（<code>_filter</code> の長命 VFS への持続）/ U-11（<code>mount/mount</code> は 0.036 秒で返る＝同期でよい）/ <b>U-12（per-mount の ReadOnly＝G-08 の実現機構）</b> / SEC-G01（認証なしは 401）。<br>
+      <b>【本書の誤りを発見・修正】</b> (1) <b>rcd の待受ポートは stdout ではなく stderr に出る</b> — 「標準出力から読み取る」という記述は誤りで、そのまま実装すると永久に待つ。全 5 箇所を修正。
+      (2) <b><code>mount/types</code> の応答は <code>["cmount","nfsmount"]</code> で <code>mount</code>（FUSE 版）は存在しない</b> — 「省略時は mount→cmount→mount2 の順で解決」は誤りで、実際は <code>cmount</code> が選ばれる。<code>mountType</code> 明示が必須という結論は不変。<br>
+      <b>【設計の簡素化】</b> U-01 成立により <b>G-04 のフォールバック（専用 rclone.conf の生成）と U-10 が不要</b>になり、クラッシュ時の平文 secret 残留という弱点ごと消えた。U-09 は<b>指定自体が不要</b>と判明（既定値が既に 1000000 で DD-001 の指定値と一致）。<br>
+      <b>【実測で判明した新事実 M-01〜M-06】</b> (M-01) <b>read-only マウントは OS レベルでは read-only とマークされない</b> — Finder は書けると認識してドラッグを許可し、そのあと失敗する。安全性は達成されるが UX 上の代償を伴うため E-14 と「読み取り専用」バッジが必須。
+      (M-02) 拒否時のエラーが書込みは <code>permission denied</code>、削除は <code>Input/output error</code> と異なるため、OS のエラー文をそのまま見せない。
+      (M-03) 「未送信 N 件」は <code>vfs/stats</code> の <code>diskCache.uploadsQueued + uploadsInProgress</code> で取る（キー名を実測で確定）。
+      (M-04) rc の<b>ユーザー名がログに平文で出る</b>（パスワードはマスクされる）ため SEC-G04 のマスク対象に追加。<br>
+      <b>【S3 バックエンドでも確認】</b> 検証の主体は <code>type=local</code> だが、S3（R2）についても
+      <b>設定キー名の実在・<code>provider</code> に <code>Cloudflare</code> があること・環境変数だけで S3 リモートが解決され指定 endpoint に HTTPS を送るところまで到達すること</b>を確認した（§14.1 U-01）。
+      あわせて <b>M-05</b>（環境変数由来のリモートは <code>config/dump</code> に現れない＝リモート定義の確認に使ってはならない。同時に、認証情報が出ないので診断表示には安全）と
+      <b>M-06</b>（エラー本文に accountId が含まれるためマスク対象に追加）を記録した。<br>
+      <b>【残る未検証】</b> U-03（library validation）/ U-06（R2 料金）/ U-07（FSEvents・v1.1 以降）の 3 件、および<b>実 R2 アカウントでの疎通</b>（SigV4・マルチパート・権限境界＝ G1-9）。いずれも設計の骨格に影響しない。<br>
+      <b>【ロードマップ】</b> G1 の見積りを 3 日 → <b>2 日</b>へ短縮（検証の大半が済んだため）。ただし <b>v1.2 の検証は <code>type=local</code> で行っており S3 固有の挙動は未確認</b>なので、G1-9「実アカウントでの通し確認」を新設して必須タスクにした。<br>
+      <b>【同梱バージョン確定】</b> G0-2 の初期値を v1.75.0 + SHA-256 で固定（実装者の裁量に残さない）<br>
+      <b>【実測後の再レビューで修正した点】</b> 2 モデルが<b>独立に同じ指摘</b>を出したため優先して修正した:
+      <b>(1) U-04 の「✅ 成立」を「⚠️ 形式の受理まで」へ格下げ</b> — <code>type=local</code> には HTTP ヘッダの概念が無く、
+      「付与された」ことと「受理されて無視された」ことの区別がついていなかった。<b>✅ を見た実装者が R2 での確認を飛ばし、壊れた <code>immutableCacheControl</code> を出荷する導線になっていた</b>。
+      検証は §4.4 手順 5 の拡張として組み直した。
+      <b>(2) U-13 を新設</b> — <span class="api">operations/publiclink</span> は local が非対応のため<b>一度も成功させていない</b>のに、
+      ゴール「URL ベースの共有」の半分を担う。引数形式は <span class="api">rc/list</span> のヘルプで <code>expire</code> が<b>文字列</b>であることを確認（<code>vfsOpt</code> の数値とは扱いが違う）。実発行は G1-9 ④。
+      (3) TL;DR に v1.2 自身が訂正した旧記述（mount→cmount→mount2 の解決順・G1 が 3 日・7〜9 日）が残っていた自己矛盾を解消。
+      (4) <b>E-14 の検知機構を規定</b> — 書込み拒否は VFS 層で起きるためアプリは経路に居らず、<b>Finder のダイアログは抑制できない</b>。
+      rclone ログの監視で検出し、<b>OS のダイアログに「加えて」</b>案内を出す設計に修正した（達成不能な約束を削除）。
+      (5) 実測事実の ID を <b>F-01〜F-06 → M-01〜M-06 へ改名</b>（DD-001 の F-01〜F-18 と番号空間が衝突していたため）。
+      (6) U-01 の判定を「機構は実測で確定・S3 キー名は G1-3」へ、U-11 に「S3 では応答時間が変わりマウント時に認証エラーが起きうる（E-15 新設）」を、M-03 に「キー名のみ確認」を追記<br>
+      <b>【冪等性の観点を追加 — §8.6 新設】</b> DD-001 §6.2 が明示していた「冪等・再現可能」という設計目標を、本書は v1.2 まで<b>一度も引き継いでいなかった</b>（「冪等」の語が本文に存在しなかった）。
+      GUI は同じ操作が繰り返し実行される前提のため、この要求は CLI 版より強い。<b>rclone v1.75.0 で実測</b>して以下を確定した:<br>
+      <b>・冪等</b>: <span class="api">mount/unmountall</span>（0 件でも <code>{}</code>）/ <span class="api">options/set</span>（同値 2 回でも <code>{}</code>）。
+      <b>・非冪等</b>: <span class="api">mount/mount</span> は 2 回目に <code>exit status 78</code>（ただし <code>listmounts</code> は 1 件のままで<b>状態としては冪等</b>）、
+      <span class="api">mount/unmount</span> は 2 回目に <code>mount not found</code> / HTTP 500。<b>どちらも「望む終了状態にすでに達している」ことを示すため、アプリは成功として扱う</b>。<br>
+      <b>・CRIT-03（最重要）</b>: <b><code>--rc-addr 127.0.0.1:0</code> では rcd を二重起動しても別ポートで両方立ち上がる</b>（実測: 61987 と 62097 が同時稼働）。
+      ポート固定なら <code>bind: address already in use</code> で 2 本目が失敗するが、本書はポート 0 を採用しているため<b>プロセスの単一性はアプリの責任</b>。
+      PID ファイル・孤児の回収・単一インスタンス化・終了時の削除の 4 点を §8.6.2 に規定し、§8.1 の手順 0 として組み込んだ。<br>
+      <b>・M-07</b>: <b>nfsmount のエラーにも「failed to mount FUSE fs」という文言が出る</b>。macFUSE の問題と誤診断しないよう、エラー分類は<b>メッセージ先頭ではなく末尾の実体（<code>exit status 78</code>）で行う</b>と規定。<br>
+      あわせて冪等性テスト <b>T-G31〜T-G38</b>（二度押し・強制終了後の孤児回収・二重起動・2 回公開・2 回取り下げ・2 回保存・2 回削除）と <b>U-14</b>（<code>SMAppService</code> の register/unregister の冪等性）、G1-9 ⑧（<code>deletefile</code> の冪等性）を追加した。<br>
+      <b>【冪等性レビューで判明した自己矛盾を修正】</b> §8.6.2 (b) の孤児回収手順に <span class="api">mount/unmountall</span> を書いていたが、
+      <b>rc-user / rc-pass はメモリのみで永続化しない（SEC-G01）ため、孤児の認証情報は失われており RC API は 401 になる = 実装不能</b>だった。
+      PID ファイルに認証情報を書けば呼べるが、それは SEC-G01 自身に違反する。<br>
+      <b>実測で <code>SIGTERM</code> だけでマウントが自動解除されること（M-08）を確認</b>し、<code>SIGTERM</code> 直行に修正。
+      これにより「認証情報を永続化しない」原則と「孤児を回収する」要求が両立した。
+      あわせて <code>SIGKILL</code> まで進んだ場合に備え、<b>§8.4 手順 2 に例外規定</b>（実行パス照合で自分由来と特定できたマウントは umount してよい）を追加した —
+      これが無いと E-04（管理外の残骸は手動解除を案内）が出てしまい、<b>T-G34 の期待「再起動でマウントが正常に復帰する」と矛盾</b>していた。<br>
+      さらに <b>プロファイル削除の冪等性</b>（<code>errSecItemNotFound</code> を成功扱い・<code>activeProfileId</code> の付け替え規則）と
+      <b>期限付きリンク発行</b>（本質的に非冪等だが状態を壊さないため再実行を妨げない）を §8.6.3 に追加し、PID ファイルが無い孤児のフォールバック（実行パス一致プロセスの走査）も規定した</td></tr>
+    <tr><td class="mono">1.0</td><td class="mono">2026-08-30</td><td>初版。既存資料 FL-R2FS-DD-001 v1.4 の調査結果を踏まえ、GUI 版の設計として起票。決定 G-01〜G-07、プロファイル スキーマ、rcd 制御仕様、共有仕様、ライフサイクル、セキュリティ SEC-G01〜G08、ロードマップ G0〜G5、テスト T-G01〜T-G30、リスク R-G01〜R-G10 を定義。未確認事項を U-01〜U-06 として明示</td></tr>
+    <tr><td class="mono">1.1</td><td class="mono">2026-08-30</td><td><b>2 モデル（fable / opus）による独立レビューの反映。</b>主な変更:<br>
+      <b>(1) G-08 新設 — public バケットを read-only でマウント</b>。DD-001 が最大の運用リスクとした「Finder 直置きによる Exif 除去の迂回」を、検知（FSEvents）ではなく書込み経路の遮断で構造的に解消。これにより CRIT-02 の検知機構と U-07 が v1.0 のブロッカーから外れ、実装量も減った。<br>
+      <b>(2) 接続テストに手順 5（公開 URL の到達性検証）を追加</b>。カスタムドメイン未接続のまま「全項目 ✓」となり、共有 URL の 404 で初めて破綻が露見する導線を塞いだ（E-13 新設）。<br>
+      <b>(3) rc 認証情報を引数から環境変数へ移動</b>。§6.1 が SEC-G01/G02（引数は ps で可読のため禁止）と矛盾していた自己矛盾を解消。T-G04 の検査対象にも追加。<br>
+      (4) 設定項目の注入経路表を新設し、DD-001 の厳守フラグ <code>--nfs-cache-handle-limit</code> の写像漏れを修正（U-09）。<br>
+      (5) 共有先バケットの解決規則（§7.1 RULE）を新設。0 個 / 1 個 / 2 個以上の分岐を全経路で定義。<br>
+      (6) 共有ダイアログの既定選択を「恒久公開」から「期限付きリンク」へ変更（危険側に倒さない原則）。<br>
+      (7) Apple Developer Program 加入を前提に明記し、G5 が「ゴール達成の必須要件」であることを明示。<br>
+      (8) プロファイル切替・異常終了時の残留 conf・<code>share-staging/</code> の掃除など、抜けていた経路を補完。<br>
+      (9) 未確認事項を <b>U-07〜U-11 として追加（計 11 件）</b>。うち U-11（<code>mount/mount</code> が同期で即返るか）は、外れると §6.5 の同期呼び出しと UI 応答設計がまとめて変わる。<br>
+      (10) <b>見積りを 5〜7 日から 7〜9 日へ改訂</b>。G1 に未確認事項 6 件の実機検証が集中するため単独 3 日とした。<br>
+      (11) G-08 の波及漏れを修正 — §7.1 の「Finder コピーによる公開」削除、§5.2 モックの public 行を読み取り専用表示へ、スキーマで <code>visibility</code> から read-only を自動導出すると明記。<br>
+      (12) DD-001 からの継承漏れ K-02（NFC 正規化）・K-05（300GB 上限）を継承表と §6.1 に追加。R-08 は継承ではなく R-G06 への置換であることを明記。<br>
+      その他、SEC-06/07 の継承漏れ、Keychain の格納方式、ポーリング間隔の語義、Finder 共有メニューのスコープ確定、presigned の再コピーを提供しない旨など計 35 件超の修正。<br>
+      (13) <b>G-08 の成立条件そのものを U-12 として登録</b>（<code>vfsOpt.ReadOnly</code> がマウント単位で効くか）。本書の安全性の要が「検証結果が想定と異なる場合は改版してから続行」という自身の規定の枠外にあった漏れを修正。失敗時の代替（rcd 2 本立て / public をマウントしない）まで明記し、検証を G4 ではなく <b>G1-9</b> に前倒しした。<br>
+      (14) 共有先バケットの解決規則に「§4.4 手順 5 未通過のバケットを除外する」条件を追加し、E-13 と整合させた。<code>share-staging/</code> の掃除判定を発行履歴依存から<b>日付 prefix 基準（14 日）</b>へ一本化（履歴 50 件の上限・再インストールで判定不能になる問題を回避）。<code>allowDirectWriteToPublic</code> の反映タイミングを「即座に再マウント」と確定。<br>
+      <b>レビュー体制</b>: fable（実装着手可能性の観点）と opus（ゴール適合の観点）に<b>観点を分けて</b>並列で依頼し、両者の指摘を統合した。観点を分けたのは、同じ観点を複数モデルに投げても相関した見落としが揃うだけで、エラーの非相関性が買えないため。
+      さらに G-08 の追加が文書全体へ波及したため、<b>fable に v1.1 の差分だけを対象とした 2 回目のレビュー</b>を依頼し、波及漏れ 4 件を検出・修正した</td></tr>
+  </table>
+</section>
+
+
+<section id="s15">
+  <div class="sec-key">r2://spec/gui/15_brand/</div>
+  <h2>15. ブランド・アセットと命名規約</h2>
+  <p class="lead">
+    プロダクト名が <b>SkyFolder</b> に確定した（<code>docs/design/logo.jpeg</code>）。
+    本書は v1.2 まで「R2 Finder」を仮名として使っていたため、本節で正式名称に統一し、
+    <b>あわせて「リポジトリ名が将来変わっても壊れない命名」</b>を規定する。
+  </p>
+
+  <h3>15.1 プロダクト名と、名前の階層</h3>
+  <div class="box danger">
+    <div class="box-t">MUST — リポジトリ名と bundle identifier を連動させない</div>
+    <p style="margin-top:4px">
+      リポジトリ名は将来変更される予定がある。<b>しかし bundle identifier を追随させてはならない。</b>
+      bundle identifier は macOS における<b>アプリの同一性そのもの</b>であり、変更すると:
+    </p>
+    <ul class="plain" style="margin-top:8px">
+      <li><b>Keychain の項目にアクセスできなくなる</b>（<code>service</code> が変わるうえ、アクセス制御が旧 bundle id の署名に紐づいているため）— ユーザーは Secret Access Key の再入力を強いられる</li>
+      <li><b><code>SMAppService</code> のログイン項目登録が外れる</b>（旧 id の登録が孤児になり、システム設定に幽霊の項目が残る）</li>
+      <li>Application Support / Caches / Logs のディレクトリが変わり、<b>プロファイル設定を見失う</b></li>
+      <li>Developer ID 署名の連続性が切れ、<b>ユーザーには「別のアプリ」として見える</b></li>
+    </ul>
+    <p style="margin-top:8px"><b>したがって bundle identifier は本書で確定させ、以後いかなる理由でも変更しない。</b></p>
+  </div>
+
+  <table>
+    <tr><th style="width:170px">階層</th><th style="width:230px">値</th><th>変更可否と理由</th></tr>
+    <tr><td>プロダクト名</td><td class="mono"><b>SkyFolder</b></td><td>UI・ドキュメント・配布物の表示名。<b>変更可</b>（表示のみに影響）</td></tr>
+    <tr><td>アプリ名（<code>.app</code>）</td><td class="mono">SkyFolder.app</td><td>プロダクト名に追随する。<b>変更可</b></td></tr>
+    <tr><td><b>bundle identifier</b></td><td class="mono"><b>dev.fracturelab.skyfolder</b></td><td><b>変更不可（確定）。</b>上記 MUST の理由による。<b>リポジトリ名が変わっても、プロダクト名が変わっても、これは変えない</b></td></tr>
+    <tr><td>Keychain service</td><td class="mono">dev.fracturelab.skyfolder</td><td>bundle identifier と同一。<b>変更不可</b></td></tr>
+    <tr><td>Application Support</td><td class="mono">~/Library/Application Support/<br>dev.fracturelab.skyfolder/</td><td>bundle identifier 由来。<b>変更不可</b></td></tr>
+    <tr><td>Caches</td><td class="mono">~/Library/Caches/<br>dev.fracturelab.skyfolder/</td><td>同上。<b>変更不可</b></td></tr>
+    <tr><td>ログ</td><td class="mono">~/Library/Logs/SkyFolder/</td><td>人が読む場所なのでプロダクト名を使う。<b>変更可</b>（移行が必要になるだけで、機能は壊れない）</td></tr>
+    <tr><td>マウントパスの既定</td><td class="mono">~/SkyFolder/{profile}/{alias}</td><td><b>既定値にすぎない</b> — ユーザーが <code>mountPath</code> で自由に変更できる（§4.2）。プロダクト名変更時は<b>新規プロファイルの既定だけ</b>が変わり、既存プロファイルの値は書き換えない</td></tr>
+    <tr><td><b>R2 上のプローブキー prefix</b></td><td class="mono">.skyfolder-probe-{乱数}</td><td><b>唯一「ユーザーの R2 バケット上に残る」名前</b>（§4.4 手順 3・5 で PUT し、§8.1 手順 0-c で掃除する）。<br>
+      <b>変更可。ただし変更する場合は、旧 prefix も掃除対象に含めること</b> — さもないと旧 prefix のプローブが<b>ユーザーのバケットに永久に残る</b>。<br>
+      <span class="g">※ v1.2→v1.3 で <code>.r2finder-probe-*</code> から改名済み。まだ誰も実行していないため実害はないが、今後の変更ではこの規定に従う</span></td></tr>
+    <tr><td>マウントのボリューム名<br><span class="mono">mountOpt.VolumeName</span></td><td class="mono">SkyFolder-{alias}</td><td>Finder に表示されうる名前（nfsmount では無視される場合がある・DD-001 F-08）。<b>変更可</b>（表示のみ）</td></tr>
+    <tr><td>リポジトリ名</td><td class="mono">（現在 skyfinder）</td><td><b>変更可・自由。</b>上記のいずれにも影響しない。<b>ソースコード内でリポジトリ名を参照してはならない</b></td></tr>
+    <tr><td>文書 ID</td><td class="mono">FL-R2GUI-DD-001</td><td><b>変更不可。</b>DD-001 から参照されており、履歴の連続性を保つため（プロダクト名が変わっても文書 ID は据え置く）</td></tr>
+  </table>
+
+  <div class="box info">
+    <div class="box-t">NOTE — なぜ今 bundle identifier を確定させるのか</div>
+    <p style="margin-top:4px">
+      実装が始まる前の今なら、変更コストは<b>ゼロ</b>である。実装後・配布後に変更すると、
+      <b>既存ユーザーの Keychain 移行処理とログイン項目の付け替えを書く必要が生じる</b>。
+      v1.2 まで使っていた仮の <code>dev.fracturelab.<b>r2finder</b></code> は本節をもって破棄し、
+      <b>全箇所を <code>dev.fracturelab.<b>skyfolder</b></code> に置き換えた</b>。
+    </p>
+  </div>
+
+  <h3>15.2 アセットの現物と、実装に必要な形式のギャップ</h3>
+  <p>
+    <code>docs/design/</code> に格納されたアセットを実測した結果、<b>そのままではアプリに組み込めない</b>。
+    以下は現物の実測値と、macOS アプリに必要な形式との差である。<b>G0 で解消すること。</b>
+  </p>
+
+  <h4>15.2.1 現物の実測値</h4>
+  <table>
+    <tr><th style="width:130px">項目</th><th style="width:220px">icon.jpeg</th><th>logo.jpeg</th></tr>
+    <tr><td>画像全体</td><td class="mono">2816 × 1536 px / 300dpi</td><td class="mono">2816 × 1536 px / 300dpi</td></tr>
+    <tr><td>形式</td><td class="mono">JPEG（<b>アルファなし</b>）</td><td class="mono">JPEG（<b>アルファなし</b>）</td></tr>
+    <tr><td><b>実描画領域</b></td><td class="mono"><b>約 904 × 904 px</b>（正方形）</td><td class="mono">約 1816 × 376 px</td></tr>
+    <tr><td>余白</td><td>幅の 68% / 高さの 41% が背景</td><td>幅の 36% / 高さの 76% が背景</td></tr>
+    <tr><td>背景色</td><td class="mono">#EFEFEF（不透明の塗り）</td><td class="mono">#EFEFEF（不透明の塗り）</td></tr>
+    <tr><td>意匠</td><td>角丸の青いタイルに、白い線画で<b>フォルダ + 雲 + 上向き矢印</b>（＝ローカルのフォルダからクラウドへ上げる、という本ツールの機能そのもの）</td><td><code>Sky</code> を太いウェイト、<code>Folder</code> を細いウェイトで組んだワードマーク</td></tr>
+  </table>
+
+  <h4>15.2.2 ブランドカラー（実測値）</h4>
+  <table>
+    <tr><th style="width:190px">用途</th><th style="width:130px">値</th><th>備考</th></tr>
+    <tr><td>アイコン背景（上端）</td><td class="mono">#6FB6ED</td><td rowspan="2">垂直方向のグラデーション。実測で上端から下端まで滑らかに変化する</td></tr>
+    <tr><td>アイコン背景（下端）</td><td class="mono">#4997D6</td></tr>
+    <tr><td><b>ブランドカラー（中央値）</b></td><td class="mono"><b>#5DA7E4</b></td><td>単色で使う場合の基準。UI のアクセントに用いる</td></tr>
+    <tr><td>アイコンの線画</td><td class="mono">#FAFEFE</td><td>実質的に白</td></tr>
+    <tr><td>ロゴの文字色</td><td class="mono">#555352</td><td>純黒ではないダークグレー</td></tr>
+    <tr><td>アセットの背景</td><td class="mono">#EFEFEF</td><td><b>これは意匠ではなく、書き出し時に焼き込まれた背景</b>。透過に置き換える対象</td></tr>
+  </table>
+  <div class="box warn">
+    <div class="box-t">CAUTION — 本書 UI 設計のアクセント色との関係</div>
+    <p style="margin-top:4px">
+      §5.2 は「公開バケットを R2 オレンジ（<code>#E8710A</code>）の帯で示す」と規定している。
+      ブランドカラー <code>#5DA7E4</code>（青）とは<b>役割が異なる</b>ため、両方を使い分ける:
+      <b>青 = プロダクトのアイデンティティ</b>（アイコン・アクセント・選択状態）、
+      <b>オレンジ = 「公開」という危険側の状態を示す警告色</b>。
+      <b>公開バケットの表示に青を使ってはならない</b> — 警告としての識別性が失われる。
+    </p>
+  </div>
+
+  <h4>15.2.3 実装に必要な形式と、必要な作業</h4>
+  <table>
+    <tr><th style="width:70px">ID</th><th style="width:180px">必要なもの</th><th>現物とのギャップ / 対応</th></tr>
+    <tr>
+      <td class="mono"><b>A-01</b></td>
+      <td>アプリアイコン<br><code>1024 × 1024</code> 正方形 PNG（<code>Assets.xcassets</code> の AppIcon）</td>
+      <td><b>解像度が足りない。</b>実描画領域は <b>904 × 904</b> で、1024 まで <b>約 1.13 倍の拡大</b>が要る。JPEG からの拡大は線画のエッジが甘くなる。<br>
+        <b>対応（推奨）</b>: <b>元データ（ベクター / 1024px 以上の正方形 PNG）を用意し直す</b>。意匠は現物どおりで構わない。<br>
+        <b>暫定対応</b>: 904px を 1024px へ拡大して使う。<b>その場合は「暫定である」ことを <code>docs/design/README.md</code> に明記し、G5（配布）までに差し替える</b></td>
+    </tr>
+    <tr>
+      <td class="mono"><b>A-02</b></td>
+      <td>アイコンの<b>透過</b></td>
+      <td><b>JPEG はアルファチャンネルを持てない。</b>背景 <code>#EFEFEF</code> が焼き込まれており、切り抜きが必要。<br>
+        <b>対応</b>: 描画領域（904×904）で切り出し、周囲の <code>#EFEFEF</code> を透過にした PNG を作る。<b>青いタイルの内側は不透明のまま</b>（タイル自体が意匠のため）</td>
+    </tr>
+    <tr>
+      <td class="mono"><b>A-03</b></td>
+      <td>角丸マスクの扱い</td>
+      <td><b>現物にはすでに角丸が描かれている。</b> macOS はアプリアイコンに<b>OS 側で角丸マスクを適用する</b>ため、そのまま渡すと<b>角丸が二重にかかって縁が欠ける</b>。<br>
+        <b>対応</b>: (a) 角丸なしの正方形フルブリード画像を用意して OS のマスクに任せる、または (b) 現物の角丸半径が macOS の規格と一致するか確認して、一致するならそのまま使う。<br>
+        <b>CAUTION — OS バージョンで前提が異なる</b>: 本アプリの deployment target は <b>macOS 14</b> だが、開発機は <b>macOS 26.6.2</b> である。
+        <b>macOS 26 の統一アイコン形状（OS 側がマスクする方式）と、macOS 14/15 の「開発者が角丸ごと描いて納品する」従来方式は前提が違う。</b>
+        選択肢 (a) を採ると、<b>macOS 14/15 では角のない四角いアイコンになる可能性がある</b>。<br>
+        <b>したがって開発機だけで判断してはならない。target 下限（macOS 14）側でも確認すること</b>（実機が無い場合は VM またはアイコンプレビューで代替する）</td>
+    </tr>
+    <tr>
+      <td class="mono"><b>A-04</b></td>
+      <td>アイコンのサイズ展開<br><b>＋ 小サイズ用の別版（必須）</b></td>
+      <td>macOS は 16 / 32 / 128 / 256 / 512 pt の各 <code>@1x</code>/<code>@2x</code> を要求する。<br>
+        <b>実測で確定（M-10）</b>: 現物から生成した各サイズを目視確認したところ —<br>
+        <b>・16×16 px … ❌ 使用不可。</b>線画が完全に潰れ、フォルダの輪郭がかろうじて分かる程度。<b>雲・矢印・表情はまったく判別できず、「青い四角に何かある」としか見えない</b><br>
+        <b>・32×32 px … ✅ 判別可能。</b>フォルダ・雲・表情が読める（矢印は細いがぎりぎり見える）<br>
+        <b>したがって「潰れる場合は別版」ではなく、<u>16pt 用の別版は必須</u>である。</b>
+        線を太らせ、要素を減らした（矢印か雲のどちらかに絞る等）専用データを用意する。32pt 以上は現物からの縮小で足りる。<br>
+        <b>この別版は <code>make-assets.sh</code> では生成できない人間の作業</b>である（別の意匠が要るため）。A-01 と同様に、
+        <b>成果物は原本として <code>docs/design/</code> に置く</b>（§15.3 の再現性原則に従い、ビルドに使う派生物はそこから生成する）</td>
+    </tr>
+    <tr>
+      <td class="mono"><b>A-05</b></td>
+      <td>ロゴの透過版</td>
+      <td>ロゴも背景 <code>#EFEFEF</code> が焼き込まれている。<b>そのままオンボーディング画面に置くと、ダークモードで白い箱が浮く。</b><br>
+        <b>対応</b>: 背景を透過した PNG を作る。さらに<b>ダークモード用に文字色を反転した版</b>（<code>#555352</code> → 明るいグレー）を用意し、<code>Assets.xcassets</code> の Appearance 機能で自動切替する</td>
+    </tr>
+    <tr>
+      <td class="mono"><b>A-06</b></td>
+      <td>メニューバーアイコン<br>（テンプレート画像）</td>
+      <td><b>現物に存在しない。</b> <code>MenuBarExtra</code>（§5.5）には<b>単色のテンプレート画像</b>が必要で、青いタイルのアイコンはそのまま使えない（メニューバーは明暗が反転するため）。<br>
+        <b>対応</b>: アイコンの<b>線画部分だけを抜き出した単色シルエット</b>（16×16 / 18×18 pt、<code>@1x</code>/<code>@2x</code>）を作り、<code>isTemplate = true</code> で登録する。§5.5 が定義する 5 つの状態（正常・転送中・未送信あり・マウント断・rcd 停止）は、<b>このテンプレート画像 + バッジのオーバーレイ</b>で表現する。<br>
+        <b>A-04 の実測（M-10）がここにも効く</b>: メニューバーは 16〜18pt であり、<b>現物の線画をそのまま縮めると潰れて判別できない</b>。
+        <b>A-04 の 16pt 用別版と同じデータを流用できるよう、両者をまとめて設計すること</b>（フォルダの輪郭のみに絞る、線幅を 2〜3 倍にする等）</td>
+    </tr>
+    <tr>
+      <td class="mono"><b>A-07</b></td>
+      <td>DMG の背景画像<br>（G5・任意）</td>
+      <td>ロゴを流用できるが、<b>DMG は Retina 用に <code>@2x</code> も要る</b>。優先度は低く、無くても配布は成立する</td>
+    </tr>
+  </table>
+
+  <div class="box decide">
+    <div class="box-t">DECISION — アセット作業は G0 に置く</div>
+    <p style="margin-top:4px">
+      A-01〜A-06 は <b>G0（プロジェクト基盤）</b>で実施する。理由は、
+      <b>アイコンが無いとビルドしたアプリの見た目が Xcode の既定のままになり、以降の全フェーズで「仮の姿」を見続けることになる</b>ため。
+      特に <b>A-06（メニューバーアイコン）は G3 の常駐 UI で必ず要る</b>ので、後回しにすると G3 が止まる。<br>
+      <b>ただし A-01 の「元データを用意し直す」判断だけは人間の作業</b>であり、暫定の拡大版で G1〜G4 を進めることは許容する（G5 までに差し替える）。
+    </p>
+  </div>
+
+  <h3>15.3 アセットの管理場所</h3>
+  <table>
+    <tr><th style="width:210px">パス</th><th>内容</th></tr>
+    <tr><td class="mono">docs/design/</td><td><b>デザインの原本</b>（人間が作った成果物）。<code>icon.jpeg</code> / <code>logo.jpeg</code>。<b>ここを直接ビルドに使わない</b></td></tr>
+    <tr><td class="mono">docs/design/README.md</td><td>原本の由来・実測値・派生物の作り方・暫定である旨の記録。<b>A-01 の暫定対応を採る場合、その事実をここに書く</b></td></tr>
+    <tr><td class="mono">SkyFolder/Assets.xcassets/</td><td><b>ビルドに使う派生物</b>。AppIcon セット・メニューバーのテンプレート画像・ロゴ（Light/Dark）</td></tr>
+    <tr><td class="mono">scripts/make-assets.sh</td><td>原本から派生物を生成するスクリプト。<b>手作業で切り出さない</b> — 原本を差し替えたときに再生成できないと、A-01 の暫定→本番の入れ替えが手作業になる。<br>
+      <b>切り出し・拡大・各サイズへの展開は macOS 標準の <code>sips</code> だけで実行できることを確認済み</b>（<code>sips -c</code> / <code>-z</code> / <code>--cropOffset</code>）。<b>外部ツールへの依存は不要</b>。
+      ただし <b>16pt 用の別版（M-10）だけは自動生成できない</b> — 線を太らせた別の意匠が要るため、これは原本として <code>docs/design/</code> に置く</td></tr>
+  </table>
+  <p>
+    <b>この分離は §8.6 の冪等性と同じ考え方に立つ</b>: 原本から派生物を生成する操作は<b>何度実行しても同じ結果になる</b>べきで、
+    人が Photoshop で一度だけ書き出した派生物をリポジトリに置くと、原本を更新したときに再現できない。
+  </p>
+</section>
+
+<footer>
+  <div class="wrap" style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;padding:0">
+    <span>FL-R2GUI-DD-001 v1.4 — SkyFolder — fracturelab.dev internal spec</span>
+    <span>r2://fracturelab/specs/FL-R2GUI-DD-001/#eof</span>
+  </div>
+</footer>
+
+</div>
+</body>
+</html>

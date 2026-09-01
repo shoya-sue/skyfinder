@@ -1,0 +1,161 @@
+# XcodeGen spec — 生成物(.xcodeproj)はコミットせず、このファイルを唯一の正とする。
+# 何度実行しても同じ .xcodeproj になる（§8.6 の冪等性と同じ考え方）。
+name: SkyFolder
+options:
+  bundleIdPrefix: dev.fracturelab
+  deploymentTarget:
+    macOS: "14.0"
+  createIntermediateGroups: true
+  generateEmptyDirectories: false
+
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    MACOSX_DEPLOYMENT_TARGET: "14.0"
+    ENABLE_USER_SCRIPT_SANDBOXING: NO
+    DEAD_CODE_STRIPPING: YES
+    GCC_TREAT_WARNINGS_AS_ERRORS: NO
+    SWIFT_TREAT_WARNINGS_AS_ERRORS: NO
+    ALWAYS_SEARCH_USER_PATHS: NO
+    CLANG_ENABLE_MODULES: YES
+    # 署名: Developer ID が入っていない環境では ad-hoc(-) になる。
+    # G5 では CODE_SIGN_IDENTITY="Developer ID Application: ..." を上書きする。
+    CODE_SIGN_IDENTITY: "-"
+    CODE_SIGNING_REQUIRED: YES
+    CODE_SIGNING_ALLOWED: YES
+    CODE_SIGN_STYLE: Manual
+    DEVELOPMENT_TEAM: ""
+
+targets:
+  # ---- 中核ロジック。UI を含まないため、ホストアプリなしで単体テストできる ----
+  # 静的ライブラリにする理由: アプリに入れ子のバンドルを持たせないため。
+  # ネストされた実行可能ファイルが増えるほど G5 の署名・公証が複雑になる（G0-3）。
+  SkyFolderKit:
+    type: library.static
+    platform: macOS
+    sources:
+      - path: SkyFolder/Core
+    settings:
+      base:
+        PRODUCT_NAME: SkyFolderKit
+        SKIP_INSTALL: YES
+        DEFINES_MODULE: YES
+
+  # ---- アプリ本体 ----
+  SkyFolder:
+    type: application
+    platform: macOS
+    sources:
+      - path: SkyFolder/App
+      - path: SkyFolder/UI
+      - path: SkyFolder/Assets.xcassets
+      - path: SkyFolder/Resources/rclone
+        buildPhase: resources
+        optional: true
+      # T-G30: .app 内の rclone は個別署名されるためハッシュが変わる。
+      # docs/BUNDLED.md と照合できるのは「配布物（署名前）のハッシュ」なので、
+      # fetch-rclone.sh が検証した値をリソースとして同梱する。
+      - path: SkyFolder/Resources/rclone.sha256
+        buildPhase: resources
+        optional: true
+    dependencies:
+      - target: SkyFolderKit
+        embed: false
+    info:
+      path: SkyFolder/Resources/Info.plist
+      properties:
+        CFBundleName: SkyFolder
+        CFBundleDisplayName: SkyFolder
+        CFBundleIdentifier: dev.fracturelab.skyfolder
+        CFBundleShortVersionString: "1.0.0"
+        CFBundleVersion: "1"
+        CFBundlePackageType: APPL
+        CFBundleExecutable: SkyFolder
+        CFBundleIconName: AppIcon
+        LSMinimumSystemVersion: "14.0"
+        LSApplicationCategoryType: public.app-category.utilities
+        NSHumanReadableCopyright: "fracturelab.dev"
+        # SEC-09 / DD-001: 単一利用者・単一 Mac 前提
+        NSSupportsAutomaticTermination: false
+        NSSupportsSuddenTermination: false
+    entitlements:
+      path: SkyFolder/Resources/SkyFolder.entitlements
+      properties:
+        # G-07: App Sandbox は無効（子プロセス実行・任意パスへのマウント・localhost NFS）
+        com.apple.security.app-sandbox: false
+        # U-03 は解決済み: com.apple.security.cs.disable-library-validation は**不要**。
+        # Hardened Runtime（flags=0x10002 adhoc,runtime）を有効にした Release ビルドで、
+        # entitlement なしに同梱 rclone を子プロセス実行できることを実測した（--selftest）。
+        # 理由: library validation は「プロセスに読み込む dylib」に掛かる制約で、
+        # 別プロセスとして exec する実行ファイルには掛からない。
+        # 注意: この検証は ad-hoc 署名で行った。Developer ID 署名での再確認は G5-2 に残る。
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: dev.fracturelab.skyfolder
+        PRODUCT_NAME: SkyFolder
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ENABLE_HARDENED_RUNTIME: YES
+        COMBINE_HIDPI_IMAGES: YES
+        LD_RUNPATH_SEARCH_PATHS:
+          - "$(inherited)"
+          - "@executable_path/../Frameworks"
+    postCompileScripts:
+      - name: "同梱 rclone に実行権限を付与（G0-3）"
+        script: |
+          BIN="${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/rclone"
+          if [ -f "$BIN" ]; then chmod +x "$BIN"; fi
+        basedOnDependencyAnalysis: false
+    postBuildScripts:
+      - name: "同梱 rclone を個別署名（G0-3・ネストされた実行可能ファイル）"
+        script: |
+          BIN="${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/rclone"
+          if [ -f "$BIN" ]; then
+            # ad-hoc 署名（identity が "-"）では secure timestamp を打てないので --timestamp=none。
+            # **Developer ID で署名するときは打たなければならない** — Apple の公証は
+            # バンドル内のすべての署名に secure timestamp を要求し、
+            # 無いと "The signature does not include a secure timestamp" で落ちる（G5-3）。
+            if [ "${EXPANDED_CODE_SIGN_IDENTITY:--}" = "-" ]; then
+              codesign --force --options runtime --timestamp=none --sign - "$BIN"
+            else
+              codesign --force --options runtime --timestamp \
+                --sign "${EXPANDED_CODE_SIGN_IDENTITY}" "$BIN"
+            fi
+          fi
+        basedOnDependencyAnalysis: false
+
+  # ---- 単体テスト（ホストアプリ不要）----
+  SkyFolderKitTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - path: Tests/SkyFolderKitTests
+    dependencies:
+      - target: SkyFolderKit
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: dev.fracturelab.skyfolder.kit.tests
+        GENERATE_INFOPLIST_FILE: YES
+
+schemes:
+  SkyFolder:
+    build:
+      targets:
+        SkyFolder: all
+    run:
+      config: Debug
+    test:
+      config: Debug
+      targets:
+        - SkyFolderKitTests
+  SkyFolderKit:
+    build:
+      targets:
+        SkyFolderKit: all
+        SkyFolderKitTests: [test]
+    test:
+      config: Debug
+      gatherCoverageData: true
+      coverageTargets:
+        - SkyFolderKit
+      targets:
+        - SkyFolderKitTests
