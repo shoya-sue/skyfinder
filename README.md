@@ -6,7 +6,7 @@ Cloudflare R2 を macOS Finder にマウントし、URL ベースで共有する
 マウント済みファイルから恒久公開 URL・期限付き共有 URL をワンクリックで発行できる。
 **ターミナル操作は要らない。**
 
-> **リポジトリ名は `r2-finder-mount-tool` → `skyfinder` に改名済み（2026-09-01）。bundle identifier `dev.fracturelab.skyfolder` は変更していません。**
+> **リポジトリ名は `r2-finder-mount-tool` → `skyfinder` → `skyfolder` と改名しました（いずれも 2026-09-01）。bundle identifier `dev.fracturelab.skyfolder` は一度も変更していません。**
 > 変更すると Keychain のアクセス権とログイン項目の登録が切れ、ユーザーが Secret の再入力を強いられます。
 > **ソースコード内でリポジトリ名を参照しないでください。**（設計書 §15.1）
 
@@ -26,7 +26,7 @@ Cloudflare R2 を macOS Finder にマウントし、URL ベースで共有する
 
 ## インストール（Release からダウンロードする場合）
 
-1. [Releases](https://github.com/shoya-sue/skyfinder/releases) から `SkyFolder.dmg` をダウンロード
+1. [Releases](https://github.com/shoya-sue/skyfolder/releases) から `SkyFolder.dmg` をダウンロード
 2. DMG を開き、`SkyFolder.app` を `Applications` へドラッグ
 3. **初回だけ、macOS の警告を手動で越える必要があります**（下記）
 4. 起動するとオンボーディングが開くので、R2 の接続情報を入力

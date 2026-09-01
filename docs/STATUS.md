@@ -100,7 +100,7 @@
 
 ## 4. 次に実施すること（依存順）
 
-> **リリース状況**: **[v1.0.3](https://github.com/shoya-sue/skyfinder/releases/tag/v1.0.3)**（2026-09-01・**public** リポジトリ）。
+> **リリース状況**: **[v1.0.3](https://github.com/shoya-sue/skyfolder/releases/tag/v1.0.3)**（2026-09-01・**public** リポジトリ）。
 > ダウンロードして起動できることは確認済みだが、**公証が無いため初回だけ手動の許可操作が要る**。
 > それを不要にするのが §4-3（G5）。
 >

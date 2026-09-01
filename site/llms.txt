@@ -8,8 +8,8 @@ SkyFolder は SwiftUI で書かれた macOS 14 以降 / Apple Silicon 向けの�
 認証情報は Keychain に保存し、rclone へは環境変数で注入するため、設定ファイルを一切生成しません。
 
 - 公式サイト: https://skyfolder.fracturelab.dev/
-- ソースコード: https://github.com/shoya-sue/skyfinder
-- 最新リリース: https://github.com/shoya-sue/skyfinder/releases/latest
+- ソースコード: https://github.com/shoya-sue/skyfolder
+- 最新リリース: https://github.com/shoya-sue/skyfolder/releases/latest
 - ライセンス: MIT License（同梱している rclone も MIT License）
 
 ## 主な機能
@@ -50,6 +50,6 @@ macOS 14 以降 / Apple Silicon / Cloudflare R2 アカウント
 
 ## 資料
 
-- [STATUS.md](https://github.com/shoya-sue/skyfinder/blob/main/docs/STATUS.md): 確定事項と未確定を分けた台帳
-- [IMPLEMENTATION-NOTES.md](https://github.com/shoya-sue/skyfinder/blob/main/docs/IMPLEMENTATION-NOTES.md): 設計書どおりに実装すると壊れる箇所の実測記録
-- [BUNDLED.md](https://github.com/shoya-sue/skyfinder/blob/main/docs/BUNDLED.md): 同梱している rclone のバージョン・ハッシュ・ライセンス
+- [STATUS.md](https://github.com/shoya-sue/skyfolder/blob/main/docs/STATUS.md): 確定事項と未確定を分けた台帳
+- [IMPLEMENTATION-NOTES.md](https://github.com/shoya-sue/skyfolder/blob/main/docs/IMPLEMENTATION-NOTES.md): 設計書どおりに実装すると壊れる箇所の実測記録
+- [BUNDLED.md](https://github.com/shoya-sue/skyfolder/blob/main/docs/BUNDLED.md): 同梱している rclone のバージョン・ハッシュ・ライセンス

@@ -1,7 +1,7 @@
 # SkyFolder — プロジェクト context
 
 Cloudflare R2 を macOS Finder にマウントし、URL で共有する macOS ネイティブアプリ。
-**フォルダ名は `skyfinder`、プロダクト名は `SkyFolder`。別物なので混同しない。**
+**フォルダ名・リポジトリ名・プロダクト名・bundle id はすべて `skyfolder` / `SkyFolder` に揃えてある。**
 
 ## 名前の階層（事故が起きるので必ず守る）
 
@@ -10,7 +10,7 @@ Cloudflare R2 を macOS Finder にマウントし、URL で共有する macOS �
 | bundle identifier | `dev.fracturelab.skyfolder` | **不可**。変えると Keychain のアクセス権とログイン項目が切れ、ユーザーが Secret を再入力する羽目になる |
 | 文書 ID | `FL-R2GUI-DD-001` / `FL-R2FS-DD-001` | **不可**。履歴の連続性を保つため、プロダクト名が変わっても据え置く |
 | プロダクト名 | `SkyFolder` | 可（表示のみ） |
-| リポジトリ / フォルダ名 | `skyfinder`（旧 `r2-finder-mount-tool`・2026-09-01 改名） | 可・自由 |
+| リポジトリ / フォルダ名 | `skyfolder`（`r2-finder-mount-tool` → `skyfinder` → `skyfolder`・いずれも 2026-09-01） | 可・自由 |
 
 **ソースコード内でリポジトリ名を参照しない**（設計書 §15.1）。改名しても壊れないことが要件。
 

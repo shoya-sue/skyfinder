@@ -2,7 +2,7 @@
 
 **SkyFolder** — Cloudflare R2 を macOS Finder にマウントし、URL ベースで共有する macOS アプリの設計資料。
 
-> **リポジトリ名は `r2-finder-mount-tool` → `skyfinder` に改名済み（2026-09-01）。bundle identifier `dev.fracturelab.skyfolder` は変更していません。**
+> **リポジトリ名は `r2-finder-mount-tool` → `skyfinder` → `skyfolder` と改名しました（いずれも 2026-09-01）。bundle identifier `dev.fracturelab.skyfolder` は一度も変更していません。**
 > 変更すると Keychain のアクセス権とログイン項目の登録が切れ、ユーザーが Secret の再入力を強いられます（設計書 §15.1）。
 > **ソースコード内でリポジトリ名を参照しないでください。**
 
