@@ -8,6 +8,7 @@ SkyFolder/Assets.xcassets/
 # 同梱バイナリ。fetch-rclone.sh が SHA-256 検証つきで取得する（87MB）
 SkyFolder/Resources/rclone
 SkyFolder/Resources/rclone.sha256
+SkyFolder/Resources/rclone-LICENSE.txt
 
 # ビルド成果物
 build/
