@@ -141,7 +141,11 @@ public struct KeychainStore: Sendable {
 
             let updateStatus = SecItemUpdate(query as CFDictionary,
                                              [kSecValueData as String: data] as CFDictionary)
-            if updateStatus == errSecSuccess { Self.modeBox.set(mode); return }
+            if updateStatus == errSecSuccess {
+                Self.modeBox.set(mode)
+                if mode == .dataProtection { removeLegacyCopy(account: account) }
+                return
+            }
             if updateStatus != errSecItemNotFound { lastStatus = updateStatus; continue }
 
             var addQuery = query
@@ -150,23 +154,47 @@ public struct KeychainStore: Sendable {
             // **data protection keychain でのみ効く**（legacy では無視される）。
             addQuery[kSecAttrAccessible as String] = kSecAttrAccessibleWhenUnlocked
             let addStatus = SecItemAdd(addQuery as CFDictionary, nil)
-            if addStatus == errSecSuccess { Self.modeBox.set(mode); return }
+            if addStatus == errSecSuccess {
+                Self.modeBox.set(mode)
+                if mode == .dataProtection { removeLegacyCopy(account: account) }
+                return
+            }
             lastStatus = addStatus
         }
         throw KeychainError.writeFailed(lastStatus)
+    }
+
+    /// data protection へ書けたとき、**legacy 側に残っている同じ account を消す**。
+    ///
+    /// 消さないと、署名が変わって昇格したあとも
+    /// **同じ Secret のコピーが login.keychain に残り、`kSecAttrAccessible` が
+    /// 解釈されないまま画面ロック中も読める**。
+    /// しかも以後 `modesToTry` は data protection だけになるので、
+    /// `read` も `exists` も legacy を見なくなり、**残骸に気づく経路が無くなる**。
+    /// 「入れ直せば SEC-G06 (a) が成立する」という前提が、これが無いと崩れる。
+    ///
+    /// 消せなくても書き込み自体は成功しているので、失敗は握って進む。
+    private func removeLegacyCopy(account: String) {
+        _ = SecItemDelete(baseQuery(account: account, dataProtection: false) as CFDictionary)
     }
 
     /// §8.6.3 / SEC-G07: 2 回目の削除では `errSecItemNotFound` が返る。
     /// これは成功として扱う — 目的は「その項目が存在しない状態」であり、すでにそうなら達成されている。
     public func delete(account: String) throws {
         // 両方のモードから消す（過去のモードで書いた項目を残さない）
+        // **片方を消した時点で return してはいけない。**
+        // data protection 側だけ消して戻ると、legacy に同じ Secret が残る。
+        // 「削除した」とユーザーに見えているのに、login.keychain には
+        // 画面ロック中も読める状態で置かれ続ける。
         var lastStatus: OSStatus = errSecItemNotFound
+        var deletedAny = false
         for mode in [Mode.dataProtection, .legacy] {
             let status = SecItemDelete(
                 baseQuery(account: account, dataProtection: mode == .dataProtection) as CFDictionary)
-            if status == errSecSuccess { return }
+            if status == errSecSuccess { deletedAny = true; continue }
             if status != errSecItemNotFound { lastStatus = status }
         }
+        if deletedAny { return }
         if lastStatus == errSecItemNotFound || lastStatus == errSecSuccess { return }
         // entitlement が無くて data protection 側が -34018 を返すのは想定内なので成功扱い
         if lastStatus == errSecMissingEntitlement { return }

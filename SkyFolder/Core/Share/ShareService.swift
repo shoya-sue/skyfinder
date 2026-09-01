@@ -267,8 +267,21 @@ public actor ShareService {
 
         // 3. Exif 除去。失敗したらアップロードを中止する
         //    （DD-001 §8.3 の「警告のみで続行しない」を継承・E-09）
-        let shouldStrip = (stripMetadata ?? share.stripImageMetadata)
-            && ImageMetadataStripper.isTargetFile(fileURL)
+        // **除去できない形式の画像を、無加工で公開しない（fail-closed）。**
+        //
+        // 一覧外の拡張子だと除去をスキップして原本を上げていた。RAW（.dng / .cr2 /
+        // .arw / .nef）や .heif / .avif がそれに当たり、**GPS 座標や機材シリアルを
+        // 抱えたまま public バケットへ上がる**。UI にも警告が出ないので気づけない。
+        //
+        // 「除去する」が有効なのに除去できない形式なら、E-09 と同じく**中止する**。
+        // 黙って素通しにするより、公開できないほうが安全側。
+        let wantsStrip = stripMetadata ?? share.stripImageMetadata
+        if wantsStrip,
+           !ImageMetadataStripper.isTargetFile(fileURL),
+           ImageMetadataStripper.carriesMetadata(fileURL) {
+            throw ImageMetadataError.unsupportedFormat(fileURL.pathExtension)
+        }
+        let shouldStrip = wantsStrip && ImageMetadataStripper.isTargetFile(fileURL)
         var uploadSource = fileURL
         var temporaryDirectory: URL?
         // 途中で失敗しても一時ディレクトリを消す（defer 相当の確実な後始末・§8.6.3）

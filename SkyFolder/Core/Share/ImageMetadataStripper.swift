@@ -32,6 +32,24 @@ public struct ImageMetadataStripper: Sendable {
         targetExtensions.contains(url.pathExtension.lowercased())
     }
 
+    /// **除去の対象外なのに、識別情報を抱えている画像**か。
+    ///
+    /// `targetExtensions` は §7.4 の一覧（jpg / jpeg / png / tiff / tif / heic / webp）だが、
+    /// カメラの RAW（`.dng` / `.cr2` / `.arw` / `.nef`）や `.heif` / `.avif` はそこに無い。
+    /// 一覧だけで判定すると、**GPS 座標・撮影日時・機材シリアルを抱えたまま
+    /// 無加工で公開される**。拡張子の列挙は必ず新しい形式に置いていかれる。
+    ///
+    /// そこで**実際に ImageIO で開いて、識別情報の辞書を持つかを見る**。
+    /// 一覧を増やし続ける代わりに、「読めて、メタデータがある」ものを検出する。
+    public static func carriesMetadata(_ url: URL) -> Bool {
+        // **判定は `inspect` に委ねる。**
+        // 辞書の有無で見ると、ImageIO が書き出し時に必ず付ける構造的なキー
+        // （PNG の TIFF 辞書など）にも反応し、**メタデータの無い画像まで公開を止める**。
+        // `inspect` は構造キーを除外して「識別情報になるものだけ」を数えるので、
+        // 除去側と検査側で基準が揃う。
+        !ImageMetadataStripper().inspect(url).identifyingKeys.isEmpty
+    }
+
     public init() {}
 
     /// 一時ディレクトリの複製に対して除去を行い、**原本は変更しない**（§7.4）。

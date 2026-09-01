@@ -263,11 +263,19 @@ final class AppModel: ObservableObject {
         if needsRestart, alreadyRunning {
             // R-G08 と同じ理由: 作り直す前に未送信データを守る。
             // これを省くと、設定を保存しただけでアプリ終了時と同じデータ喪失が起きる。
-            if liveState.pendingUploads > 0 {
+            // **ポーリングのキャッシュで判断しない。**
+            // 直前に `poller?.stop()` を通っているうえ、保留から再入した経路では
+            // 作り直した poller の初期状態（`vfsStats == nil` → 0）を読みうる。
+            // 終了判定（§8.3）と同じく、その場で取り直した値を使う。
+            var pending = liveState.pendingUploads
+            if let client, let fresh = try? await client.vfsStats() {
+                pending = fresh.pendingUploads
+            }
+            if pending > 0 {
                 // **保留したことを覚えておく。** 覚えないと、送信が終わっても
                 // 誰も再適用せず、古い認証情報のまま動き続ける。
                 deferredActivation = profile
-                toast = "未送信のファイルが \(liveState.pendingUploads) 件あるため、"
+                toast = "未送信のファイルが \(pending) 件あるため、"
                     + "接続設定の変更は送信完了後に自動で反映されます。"
                 await restartPolling(profile: profile)
                 return
@@ -461,7 +469,15 @@ final class AppModel: ObservableObject {
 
         // R-G08: 未送信のため保留していた接続設定を、送信が終わった時点で適用する。
         // ここを通さないと、ユーザーが次に設定画面を開いて保存し直すまで反映されない。
-        if let deferred = deferredActivation, state.pendingUploads == 0, startupFinished {
+        // **`vfsStats` を実際に観測できたときだけ判断する。**
+        //
+        // `restartPolling` で作り直した `StatsPoller` の初期状態は `vfsStats == nil` で、
+        // `pendingUploads` は `?? 0` により **0 を返す**。`pollListMounts` は成否に関わらず
+        // observer を発火するので、**未送信が 1 件も送られていない時点で「0 になった」と
+        // 誤認**し、再適用 → `unmountAll` → 未送信データの喪失に至る。
+        // R-G08 が守ろうとしたものを、保留の仕組み自体が壊すことになる。
+        if let deferred = deferredActivation, state.vfsStats != nil,
+           state.pendingUploads == 0, startupFinished {
             deferredActivation = nil
             logger.notice("未送信が解消したため、保留していた接続設定を適用する（R-G08）")
             Task { [weak self] in

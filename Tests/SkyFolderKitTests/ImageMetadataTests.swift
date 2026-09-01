@@ -328,3 +328,134 @@ struct ImageMetadataStripperTests {
         }
     }
 }
+
+/// **XMP パケットが除去されるかの実測。**
+///
+/// `strip` は `CGImageSourceCopyPropertiesAtIndex` が返す辞書へ `kCFNull` を入れる方式だが、
+/// **XMP（JPEG の APP1 / PNG の iTXt）はその properties 辞書に現れない** — ImageIO では
+/// `CGImageSourceCopyMetadataAtIndex` / `CGImageMetadata` 系の別 API で扱う。
+/// つまり指定先のキーが存在せず、`AddImageFromSource` の「指定しなかったものは元のまま」
+/// によって出力へ残る可能性がある。
+///
+/// XMP は `Iptc4xmpExt:PersonInImage`（**M-28 で実害が出た被写体の氏名の本来の格納先**）や
+/// `exif:GPSLatitude` を持つ。Lightroom や写真アプリの書き出しでは IPTC 辞書ではなく
+/// XMP 側に入るのが普通なので、ここが素通しなら M-28 の修正は片側しか塞いでいない。
+@Suite("XMP パケットの除去（SEC-08）")
+struct XMPStrippingTests {
+
+    private let stripper = ImageMetadataStripper()
+
+    /// JPEG の SOI 直後に XMP の APP1 セグメントを差し込む。
+    ///
+    /// ImageIO の `CGImageDestinationAddImageAndMetadata` では `xmp:` の任意タグを
+    /// 埋め込めなかった（保存されるのは `exif:` へ写せるものだけだった・実測）ため、
+    /// **バイト列を直接組んで確実に XMP を持つ JPEG を作る**。
+    /// 実際のカメラや Lightroom が書く形と同じ APP1 セグメントになる。
+    private func insertXMPPacket(into jpeg: Data, xmp: String) -> Data {
+        let header = Data("http://ns.adobe.com/xap/1.0/\u{0}".utf8)
+        let payload = header + Data(xmp.utf8)
+        let length = payload.count + 2          // 長さフィールド自身の 2 バイトを含む
+        var segment = Data([0xFF, 0xE1])        // APP1
+        segment.append(UInt8((length >> 8) & 0xFF))
+        segment.append(UInt8(length & 0xFF))
+        segment.append(payload)
+
+        var result = Data(jpeg.prefix(2))       // SOI
+        result.append(segment)
+        result.append(jpeg.dropFirst(2))
+        return result
+    }
+
+    @Test("XMP に入れた識別情報が出力に残らない")
+    func stripsXMPMetadata() throws {
+        let dir = TestSupport.makeTemporaryDirectory("xmp")
+        defer { TestSupport.remove(dir) }
+        let plain = dir.appendingPathComponent("plain.jpg")
+        let original = dir.appendingPathComponent("xmp.jpg")
+
+        try ImageMetadataStripperTests.writeImage(to: plain, type: UTType.jpeg, metadata: [:])
+
+        // `Iptc4xmpExt:PersonInImage` は M-28 で実害が出た被写体の氏名の**本来の格納先**。
+        // Lightroom や写真アプリの書き出しでは IPTC 辞書ではなくこちらに入る。
+        let xmp = """
+        <?xpacket begin="\u{FEFF}" id="W5M0MpCehiHzreSzNTczkc9d"?>
+        <x:xmpmeta xmlns:x="adobe:ns:meta/">
+        <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+        <rdf:Description rdf:about=""
+          xmlns:Iptc4xmpExt="http://iptc.org/std/Iptc4xmpExt/2008-02-29/"
+          xmlns:xmp="http://ns.adobe.com/xap/1.0/">
+          <Iptc4xmpExt:PersonInImage><rdf:Bag><rdf:li>XMP-PERSON-NAME</rdf:li></rdf:Bag></Iptc4xmpExt:PersonInImage>
+          <xmp:CreatorTool>XMP-CREATOR-TOOL</xmp:CreatorTool>
+        </rdf:Description>
+        </rdf:RDF>
+        </x:xmpmeta>
+        <?xpacket end="w"?>
+        """
+        try insertXMPPacket(into: try Data(contentsOf: plain), xmp: xmp).write(to: original)
+
+        // 前提: 原本の生バイトに XMP の値があること
+        let beforeBytes = try Data(contentsOf: original)
+        #expect(beforeBytes.range(of: Data("XMP-PERSON-NAME".utf8)) != nil,
+                "テストの前提が成立していない。原本に XMP が入っていない")
+        // ImageIO からも読めること（読めないなら strip が触れる余地も無い）
+        let src = CGImageSourceCreateWithURL(original as CFURL, nil)
+        #expect(src != nil, "XMP を足した JPEG が ImageIO で読めない")
+
+        let stripped = try stripper.strip(original, into: dir)
+
+        // **生バイト列で確かめる。** XMP は properties 辞書に現れないため、
+        // `inspect` の identifyingKeys では検出できない。
+        let afterBytes = try Data(contentsOf: stripped)
+        #expect(afterBytes.range(of: Data("XMP-PERSON-NAME".utf8)) == nil,
+                "XMP の被写体名が出力に残っている（SEC-08）")
+        #expect(afterBytes.range(of: Data("XMP-CREATOR-TOOL".utf8)) == nil,
+                "XMP の CreatorTool が出力に残っている")
+    }
+}
+
+/// 除去の対象外なのに識別情報を抱えている画像の検出（SEC-08 の fail-closed）。
+///
+/// `targetExtensions` の列挙だけで判定すると、RAW や新しいフォーマットが
+/// **無加工・無警告で公開される**。拡張子の一覧は必ず置いていかれるので、
+/// 実際に開いて中身を見る経路を持たせてある。
+@Suite("除去対象外の画像の検出（SEC-08 fail-closed）")
+struct UnsupportedImageDetectionTests {
+
+    @Test("一覧外の拡張子でも、Exif を持つ画像なら検出する")
+    func detectsMetadataInUnlistedExtension() throws {
+        let dir = TestSupport.makeTemporaryDirectory("unlisted")
+        defer { TestSupport.remove(dir) }
+        // 中身は JPEG だが拡張子が一覧に無い（RAW を持ち込んだ状況の代用）
+        let file = dir.appendingPathComponent("photo.dng")
+        try ImageMetadataStripperTests.writeImage(to: file, type: UTType.jpeg, metadata: [
+            kCGImagePropertyGPSDictionary: [
+                kCGImagePropertyGPSLatitude: 35.6812,
+                kCGImagePropertyGPSLongitude: 139.7671,
+            ] as [CFString: Any],
+        ])
+
+        #expect(!ImageMetadataStripper.isTargetFile(file), "テストの前提: 一覧外であること")
+        #expect(ImageMetadataStripper.carriesMetadata(file),
+                "一覧外でも GPS を持つなら検出しなければならない")
+    }
+
+    @Test("画像でないファイルは検出しない（公開を無用に止めない）")
+    func ignoresNonImages() throws {
+        let dir = TestSupport.makeTemporaryDirectory("nonimage")
+        defer { TestSupport.remove(dir) }
+        let file = dir.appendingPathComponent("notes.txt")
+        try Data("just text".utf8).write(to: file)
+        #expect(!ImageMetadataStripper.carriesMetadata(file))
+    }
+
+    @Test("メタデータを持たない画像は検出しない")
+    func ignoresCleanImages() throws {
+        let dir = TestSupport.makeTemporaryDirectory("clean")
+        defer { TestSupport.remove(dir) }
+        let file = dir.appendingPathComponent("clean.dng")
+        try ImageMetadataStripperTests.writeImage(to: file, type: UTType.png, metadata: [:])
+        // PNG を素で書き出しても TIFF/Exif 辞書が付かないことを確かめる
+        // （付くなら fail-closed が過剰に発火するので、そのときはここで落ちる）
+        #expect(!ImageMetadataStripper.carriesMetadata(file))
+    }
+}
