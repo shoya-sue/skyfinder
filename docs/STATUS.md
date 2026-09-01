@@ -52,14 +52,14 @@
 | git 管理 | リポジトリを初期化し 75 ファイルを追跡。生成物（`.xcodeproj` / `Assets.xcassets` / 同梱 rclone）は除外されている | `git log` / `git ls-files` | 2026-09-01 |
 | 同梱 rclone のライセンス | **MIT の許諾文を `.app` に同梱**（`Contents/Resources/rclone-LICENSE.txt`・1345 バイト / 23 行）。公式配布 zip に LICENSE ファイルは無く、README.txt から抽出している | `fetch-rclone.sh` 実行 → DMG をマウントして `.app` 内を確認 | 2026-09-01 |
 | DMG のビルド | `./scripts/build.sh release dmg` で 37MB の `dist/SkyFolder.dmg` が生成される | 実行して成果物を確認 | 2026-09-01 |
-| **独立レビューを 4 経路で通した** | 同一ベンダー 3 体（high 7・M-28）+ **別ベンダー 2 つ（Copilot / Codex）と Opus / Fable**（critical 1・high 9・M-29）。**すべて修正済み** | 4 経路とも `REQUEST_CHANGES` を返し、指摘を回収して修正・回帰テストを追加 | 2026-09-01 |
+| **独立レビューを 6 経路で通した** | 同一ベンダー 3 体（high 7・M-28）+ **別ベンダー 2 つ（Copilot / Codex）**（M-29）+ **Opus / Fable を 2 巡**（M-29 / M-30）。**すべて修正済み**。M-30 は **critical 1 件**（`AppDelegate` の配線漏れで終了シーケンスが全滅） | 6 経路とも `REQUEST_CHANGES` を返し、指摘を回収して修正・回帰テストを追加 | 2026-09-01 |
 | **別ベンダーの独立レビューを 2 つ取得した** | **Copilot**（`copilot -p`）と **Codex**（`codex exec -s read-only` / gpt-5.5）。Copilot は「取り下げた v1.0.0 の DMG が資産として残る」、Codex は「`\|\| true` でビルドとテストの失敗が成功扱い」を指摘。**どちらも同一ベンダー 3 体が挙げなかったもの** | 実行ログと、実行前後で作業ツリーが不変であることを確認 | 2026-09-01 |
 | v1.0.0 の無害化 | prerelease へ降格・**配布資産を削除**・ノートを取り下げの記録に差し替え | `gh release view v1.0.0`（assets 0 件） | 2026-09-01 |
 | **リポジトリを public にした** | `visibility: PUBLIC`。サイトから貼っている GitHub リンク 5 本がいずれも **200** になった | `gh repo view` / `curl` | 2026-09-01 |
 | ライセンス | **MIT License**（`LICENSE` に MIT 全文のみ）。第三者コード（rclone・MIT）の表示は README 側に置く — LICENSE に混ぜると GitHub の検出が通らない | ファイルの存在と README の記述 | 2026-09-01 |
 | 製品サイト | `site/` を Cloudflare Pages（Kojin アカウント・プロジェクト `skyfolder`）へデプロイ。`/` `/robots.txt` `/sitemap.xml` `/llms.txt` `/og.png` がいずれも **200** | `curl` で全エンドポイントを確認 | 2026-09-01 |
 | **カスタムドメインが有効** | **https://skyfolder.fracturelab.dev/** が全エンドポイント **200**。証明書は `CN=skyfolder.fracturelab.dev`（Google Trust Services）。Pages 側の status / validation とも `active` | `curl --resolve` で 2 つの edge IP それぞれから確認 + Pages API | 2026-09-01 |
-| **Release からダウンロードして動く** | **v1.0.2** を公開。`gh release download` で取得した DMG は **SHA-256 一致**（`f8f38ad9…`）、マウントでき、取り出した `.app` の自己診断が **19/20 通過・exit=0**。`rclone-LICENSE.txt` の同梱も確認 | 実際にダウンロードして実行 | 2026-09-01 |
+| **Release からダウンロードして動く** | **v1.0.3** を公開。`gh release download` で取得した DMG は **SHA-256 一致**（`818493a4…`）、マウントでき、取り出した `.app` の自己診断が **19/20 通過・exit=0**。`rclone-LICENSE.txt` の同梱も確認 | 実際にダウンロードして実行 | 2026-09-01 |
 | **配布物は Gatekeeper に拒否される** | ad-hoc 署名のため `spctl -a -t execute` → **`rejected`**。ダウンロード後は quarantine が付き、**初回はダブルクリックで開かない**。ただし**バンドル自体は健全**（`codesign -v --deep --strict` は通る） | quarantine 属性を付けて `spctl` / `codesign` で判定 | 2026-09-01 |
 | 改名の追随 | Swift / sh / yml / json / md での旧名参照 **0 件**。設計書 §15.1 の「現在のリポジトリ名」を更新 | `grep -rn -i r2-finder` | 2026-09-01 |
 
@@ -100,13 +100,14 @@
 
 ## 4. 次に実施すること（依存順）
 
-> **リリース状況**: **[v1.0.2](https://github.com/shoya-sue/skyfinder/releases/tag/v1.0.2)**（2026-09-01・**public** リポジトリ）。
+> **リリース状況**: **[v1.0.3](https://github.com/shoya-sue/skyfinder/releases/tag/v1.0.3)**（2026-09-01・**public** リポジトリ）。
 > ダウンロードして起動できることは確認済みだが、**公証が無いため初回だけ手動の許可操作が要る**。
 > それを不要にするのが §4-3（G5）。
 >
-> **v1.0.0 と v1.0.1 は取り下げた**（prerelease に降格・**配布資産も削除済み**）。
-> どちらも **SEC-08 の実害**があったため — v1.0.0 は IPTC の `PersonInImage`（被写体の氏名）が残る問題（M-28）、
-> v1.0.1 は RAW / `.heif` / `.avif` が無加工・無警告で公開される問題（M-29）。
+> **v1.0.0 / v1.0.1 / v1.0.2 はすべて取り下げた**（prerelease に降格・**配布資産も削除済み**）。
+> v1.0.0 は IPTC の `PersonInImage`（被写体の氏名）が残る問題（M-28）、
+> v1.0.1 は RAW / `.heif` / `.avif` が無加工・無警告で公開される問題（M-29）、
+> v1.0.2 は **終了処理が丸ごと素通りし、終了のたびに未送信データが失われうる**問題（M-30・critical）。
 
 ### 4-1. 今すぐできる（ブロッカーなし）
 
