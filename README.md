@@ -140,4 +140,6 @@ docs/                        設計資料。着手前に docs/README.md を読�
 |---|---|
 | [rclone](https://rclone.org/) v1.75.0 | **MIT License** — Copyright (C) 2019 by Nick Craig-Wood。許諾文は `.app` 内の `Contents/Resources/rclone-LICENSE.txt` に同梱しています（`scripts/fetch-rclone.sh` が公式配布物から取り出します） |
 
+> `LICENSE` は SkyFolder 本体の MIT 全文だけを置いています。第三者コードの表示をそこに混ぜると GitHub がライセンスを検出できなくなるためです。
+
 SkyFolder 本体は **[MIT License](LICENSE)** です。利用・改変・再配布は自由で、著作権表示と許諾文を残すことだけが条件です。
