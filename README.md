@@ -20,6 +20,36 @@ Cloudflare R2 を macOS Finder にマウントし、URL ベースで共有する
 | 認証情報 | Keychain に保存し、rcd へは環境変数で注入。**設定ファイルを一切生成しない** |
 | 配布 | Developer ID 署名 + notarization の `.app`。App Sandbox は無効なので **MAS 配布は構造的に不可能** |
 
+## インストール（Release からダウンロードする場合）
+
+1. [Releases](https://github.com/shoya-sue/skyfinder/releases) から `SkyFolder.dmg` をダウンロード
+2. DMG を開き、`SkyFolder.app` を `Applications` へドラッグ
+3. **初回だけ、macOS の警告を手動で越える必要があります**（下記）
+4. 起動するとオンボーディングが開くので、R2 の接続情報を入力
+
+### 初回起動時の警告について
+
+**現在の配布物は ad-hoc 署名で、Apple の公証（notarization）を受けていません。**
+そのため Gatekeeper はこのアプリを拒否します（実測: `spctl -a -t execute` → `rejected`）。
+ダウンロードしたファイルには quarantine 属性が付くため、**初回はダブルクリックでは開きません。**
+
+開くには:
+
+1. `Applications` の `SkyFolder.app` をダブルクリック → 「開発元を確認できません」→ **そのまま閉じる**
+2. **システム設定 → プライバシーとセキュリティ** を開く
+3. 下の方に出る「"SkyFolder" は開発元を確認できないため、使用がブロックされました」の横の **「このまま開く」**
+4. 確認ダイアログで **「開く」**
+
+一度許可すれば以降は普通に起動します。
+
+> **バンドル自体は壊れていません**（`codesign -v --deep --strict` は通ります）。
+> 拒否されるのは Developer ID 証明書と公証チケットが無いためだけです。
+> **Apple Developer Program（有料）に加入して署名・公証すれば、この手順は不要になります。**
+> 設計書はそれを G5 として定義しており、`docs/STATUS.md` §4-3 に手順があります。
+
+> 上の手順 2〜4 は macOS 26 の画面名です。**GUI の実挙動は未検証**（この環境では
+> Gatekeeper の判定結果までしか自動で確かめられないため）。手順が違ったら issue にしてください。
+
 ## 使いかた（開発）
 
 ```bash
@@ -99,3 +129,11 @@ docs/                        設計資料。着手前に docs/README.md を読�
 | `docs/FL-R2FS-DD-001_v1.4.html` | CLI 版。技術基盤と R2 側の構築手順はこちらが正 |
 | [docs/BUNDLED.md](docs/BUNDLED.md) | 同梱 rclone のバージョン・ハッシュ・実測済みの挙動 |
 | [docs/design/README.md](docs/design/README.md) | ブランド原本と実測値 |
+
+## 同梱しているもの
+
+| | |
+|---|---|
+| [rclone](https://rclone.org/) v1.75.0 | **MIT License** — Copyright (C) 2019 by Nick Craig-Wood。許諾文は `.app` 内の `Contents/Resources/rclone-LICENSE.txt` に同梱しています（`scripts/fetch-rclone.sh` が公式配布物から取り出します） |
+
+SkyFolder 本体のライセンスは未設定です（現状は権利留保）。
