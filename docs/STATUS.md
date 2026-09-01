@@ -50,6 +50,9 @@
 | **SEC-G06 (a) は現状 未達**（＝未達であることが確定した） | ad-hoc 署名では data protection keychain に書けず **login.keychain へ落ちている**。`kSecAttrAccessible` は解釈されず、**画面ロック中も認証情報を読める** | `--selftest` の SEC-G06 が `activeMode=legacy` を出力（M-27 の修正で可視化） | 2026-09-01 |
 | 自己診断が未達を隠さないこと | `warn` は通過数に数えず WARN ラベルと見出しの件数で出る。終了コードは落とさない | `SelfTestReportTests` 4 件 + **変異を当てて検出を確認**（集計を `filter(\.passed)` に戻すと落ちる） | 2026-09-01 |
 | git 管理 | リポジトリを初期化し 75 ファイルを追跡。生成物（`.xcodeproj` / `Assets.xcassets` / 同梱 rclone）は除外されている | `git log` / `git ls-files` | 2026-09-01 |
+| 同梱 rclone のライセンス | **MIT の許諾文を `.app` に同梱**（`Contents/Resources/rclone-LICENSE.txt`・1345 バイト / 23 行）。公式配布 zip に LICENSE ファイルは無く、README.txt から抽出している | `fetch-rclone.sh` 実行 → DMG をマウントして `.app` 内を確認 | 2026-09-01 |
+| DMG のビルド | `./scripts/build.sh release dmg` で 37MB の `dist/SkyFolder.dmg` が生成される | 実行して成果物を確認 | 2026-09-01 |
+| **配布物は Gatekeeper に拒否される** | ad-hoc 署名のため `spctl -a -t execute` → **`rejected`**。ダウンロード後は quarantine が付き、**初回はダブルクリックで開かない**。ただし**バンドル自体は健全**（`codesign -v --deep --strict` は通る） | quarantine 属性を付けて `spctl` / `codesign` で判定 | 2026-09-01 |
 | 改名の追随 | Swift / sh / yml / json / md での旧名参照 **0 件**。設計書 §15.1 の「現在のリポジトリ名」を更新 | `grep -rn -i r2-finder` | 2026-09-01 |
 
 **この 2 節の内容は、そのまま分析・見積り・設計判断の入力にしてよい。**
