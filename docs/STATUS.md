@@ -58,7 +58,7 @@
 | **リポジトリを public にした** | `visibility: PUBLIC`。サイトから貼っている GitHub リンク 5 本がいずれも **200** になった | `gh repo view` / `curl` | 2026-09-01 |
 | ライセンス | **MIT License**（`LICENSE` に MIT 全文のみ）。第三者コード（rclone・MIT）の表示は README 側に置く — LICENSE に混ぜると GitHub の検出が通らない | ファイルの存在と README の記述 | 2026-09-01 |
 | 製品サイト | `site/` を Cloudflare Pages（Kojin アカウント・プロジェクト `skyfolder`）へデプロイ。`/` `/robots.txt` `/sitemap.xml` `/llms.txt` `/og.png` がいずれも **200** | `curl` で全エンドポイントを確認 | 2026-09-01 |
-| **Release からダウンロードして動く** | **v1.0.1** を公開。`gh release download` で取得した DMG は **SHA-256 一致**（`33ac4f63…`）、マウントでき、取り出した `.app` の自己診断が **19/20 通過・exit=0**。`rclone-LICENSE.txt` の同梱も確認 | 実際にダウンロードして実行 | 2026-09-01 |
+| **Release からダウンロードして動く** | **v1.0.2** を公開。`gh release download` で取得した DMG は **SHA-256 一致**（`f8f38ad9…`）、マウントでき、取り出した `.app` の自己診断が **19/20 通過・exit=0**。`rclone-LICENSE.txt` の同梱も確認 | 実際にダウンロードして実行 | 2026-09-01 |
 | **配布物は Gatekeeper に拒否される** | ad-hoc 署名のため `spctl -a -t execute` → **`rejected`**。ダウンロード後は quarantine が付き、**初回はダブルクリックで開かない**。ただし**バンドル自体は健全**（`codesign -v --deep --strict` は通る） | quarantine 属性を付けて `spctl` / `codesign` で判定 | 2026-09-01 |
 | 改名の追随 | Swift / sh / yml / json / md での旧名参照 **0 件**。設計書 §15.1 の「現在のリポジトリ名」を更新 | `grep -rn -i r2-finder` | 2026-09-01 |
 
@@ -99,12 +99,13 @@
 
 ## 4. 次に実施すること（依存順）
 
-> **リリース状況**: **[v1.0.1](https://github.com/shoya-sue/skyfinder/releases/tag/v1.0.1)**（2026-09-01・private リポジトリ）。
+> **リリース状況**: **[v1.0.2](https://github.com/shoya-sue/skyfinder/releases/tag/v1.0.2)**（2026-09-01・**public** リポジトリ）。
 > ダウンロードして起動できることは確認済みだが、**公証が無いため初回だけ手動の許可操作が要る**。
 > それを不要にするのが §4-3（G5）。
 >
-> **v1.0.0 は取り下げた**（prerelease に降格）。公開後のレビューで **SEC-08 の実害**が見つかったため
-> — IPTC の `PersonInImage`（顔認識が書き込む被写体の氏名）が公開画像に残っていた。詳細は M-28。
+> **v1.0.0 と v1.0.1 は取り下げた**（prerelease に降格・**配布資産も削除済み**）。
+> どちらも **SEC-08 の実害**があったため — v1.0.0 は IPTC の `PersonInImage`（被写体の氏名）が残る問題（M-28）、
+> v1.0.1 は RAW / `.heif` / `.avif` が無加工・無警告で公開される問題（M-29）。
 
 ### 4-1. 今すぐできる（ブロッカーなし）
 
