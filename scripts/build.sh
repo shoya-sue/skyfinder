@@ -38,10 +38,21 @@ command -v xcodegen >/dev/null || { echo "xcodegen がありません（brew ins
 xcodegen generate --quiet
 
 echo "==> 4/5 ビルド (${CONFIG}) — 署名: ${SIGN_IDENTITY}"
+# **`| grep … || true` にしてはいけない。** grep の「一致なし = 1」を潰すつもりの
+# `|| true` が、xcodebuild 自身の失敗まで飲み込む（実測: `false | grep x || true` は 0）。
+# ビルドが落ちても先へ進むと、**前回の .app が残っていればそれを署名して配布物にする**。
+# ソースと一致しないバイナリをリリースする経路になるので、ここで必ず止める。
+set +e
 xcodebuild -project SkyFolder.xcodeproj -scheme SkyFolder -configuration "$CONFIG" \
   CODE_SIGN_IDENTITY="$SIGN_IDENTITY" \
   ${TEAM_ID:+DEVELOPMENT_TEAM="$TEAM_ID"} \
-  build | grep -E '(error:|warning:.*\.swift|BUILD)' || true
+  build | grep -E '(error:|warning:.*\.swift|BUILD)'
+build_status=${PIPESTATUS[0]}
+set -e
+if [ "$build_status" -ne 0 ]; then
+  echo "ビルドが失敗しました（xcodebuild exit=$build_status）。署名も配布物の作成も行いません。" >&2
+  exit "$build_status"
+fi
 
 BUILD_DIR="$(xcodebuild -project SkyFolder.xcodeproj -scheme SkyFolder -configuration "$CONFIG" \
   -showBuildSettings 2>/dev/null | awk -F' = ' '/ BUILT_PRODUCTS_DIR/{print $2}' | head -1)"

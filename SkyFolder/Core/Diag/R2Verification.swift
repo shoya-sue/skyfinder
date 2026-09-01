@@ -390,7 +390,14 @@ public enum R2Verification {
                           "SKYFOLDER_RUN_MULTIPART=1 が未指定のため未検証"))
             }
 
-            _ = try? await client.callRaw(RcPath.mountUnmountAll)
+            // **raw の `mount/unmountall` で終わらせてはいけない。**
+            // M-23 / M-25 の実測どおり、生きた nfsmount があると `unmountall` は
+            // 応答を返さない（25 秒以上待っても戻らない）。ここで詰まると
+            // 検証のあとにマウントが残り、次回の起動で孤児として回収する羽目になる。
+            // `MountController.unmountAll` は期限を切って OS の `umount` へ落ちるので、
+            // **望む終了状態（マウントが無い）に必ず到達する**。
+            let controller = MountController(client: client)
+            try? await controller.unmountAll(knownMountPoints: [mountPoint.path])
         } catch let error as RcError {
             // E-15: S3 は NewFs で疎通するため、接続テストを通った後でもここで失敗しうる
             add(Check("G1-9.7", "S3 バックエンドでのマウント", false,

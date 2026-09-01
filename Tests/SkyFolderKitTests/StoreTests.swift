@@ -281,3 +281,51 @@ struct ShareHistoryTests {
         #expect(entry.isExpired(now: now.addingTimeInterval(61)))
     }
 }
+
+/// SEC-G06 (a): data protection keychain が使えないときは legacy へ落ちるが、
+/// **落ちたモードを固定してはいけない。**
+///
+/// `modeBox` はプロセス全体で共有される static なので、一度 `.legacy` になると
+/// 以降ずっと legacy だけを試す実装だった。署名が ad-hoc から Developer ID に変わって
+/// application-identifier entitlement が付いても**二度と昇格しない**ため、
+/// 既存ユーザーが認証情報を入れ直しても画面ロック中に読める状態が残る。
+/// 「直したのに直っていない」形で SEC-G06 (a) が破れる。
+@Suite("Keychain のモード選択（SEC-G06 (a)）", .serialized)
+struct KeychainModeSelectionTests {
+
+    private let store = KeychainStore(service: "dev.fracturelab.skyfolder.tests.mode")
+
+    /// 各テストのあと、共有状態を未確定へ戻す（他のテストへ漏らさない）。
+    private func reset() { KeychainStore.modeBox.set(.undetermined) }
+
+    @Test("legacy に落ちていても、次の試行は data protection から始まる")
+    func legacyModeDoesNotStick() {
+        defer { reset() }
+        KeychainStore.modeBox.set(.legacy)
+        #expect(store.modesToTry == [.dataProtection, .legacy],
+                "legacy を固定すると、署名が変わっても data protection へ昇格しない")
+    }
+
+    @Test("data protection で通っているときは、わざわざ legacy を試さない")
+    func dataProtectionModeIsKept() {
+        defer { reset() }
+        KeychainStore.modeBox.set(.dataProtection)
+        #expect(store.modesToTry == [.dataProtection])
+    }
+
+    @Test("未確定なら data protection を先に試す")
+    func undeterminedTriesDataProtectionFirst() {
+        defer { reset() }
+        KeychainStore.modeBox.set(.undetermined)
+        #expect(store.modesToTry == [.dataProtection, .legacy])
+        #expect(store.modesToTry.first == .dataProtection,
+                "先に legacy を試すと、使える環境でも legacy に落ち着いてしまう")
+    }
+
+    @Test("satisfiesLockProtection は data protection のときだけ true")
+    func onlyDataProtectionSatisfiesLockProtection() {
+        #expect(KeychainStore.Mode.dataProtection.satisfiesLockProtection)
+        #expect(!KeychainStore.Mode.legacy.satisfiesLockProtection)
+        #expect(!KeychainStore.Mode.undetermined.satisfiesLockProtection)
+    }
+}

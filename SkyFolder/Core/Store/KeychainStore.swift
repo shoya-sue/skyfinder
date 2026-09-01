@@ -90,11 +90,22 @@ public struct KeychainStore: Sendable {
     }
 
     /// 使えるほうのモードを試す順序。まだ確定していなければ data protection を先に試す。
-    private var modesToTry: [Mode] {
+    /// テストから検証するため internal にしてある（`private` にすると
+    /// 「legacy が粘着しない」ことを固定できない）。
+    var modesToTry: [Mode] {
         switch activeMode {
         case .dataProtection: return [.dataProtection]
-        case .legacy: return [.legacy]
-        case .undetermined: return [.dataProtection, .legacy]
+        // **`.legacy` に落ちていても data protection を毎回先に試す。**
+        //
+        // `.legacy` を固定にすると、署名が変わって（ad-hoc → Developer ID）
+        // application-identifier entitlement が付いたあとも**二度と昇格しない**。
+        // ad-hoc 版で一度でも認証情報を保存したユーザーは、Developer ID 版に更新して
+        // 再入力しても legacy のままになり、**画面ロック中も読める状態が残り続ける**
+        // — SEC-G06 (a) が「直したのに直っていない」形で破れる。
+        //
+        // data protection が使えなければ従来どおり legacy へ落ちるので、
+        // 使えない環境で壊れることはない。余分に 1 回 API を叩くだけ。
+        case .legacy, .undetermined: return [.dataProtection, .legacy]
         }
     }
 

@@ -63,6 +63,11 @@ final class AppModel: ObservableObject {
     private var previouslyMountedPaths: Set<String> = []
     /// 直前のポーリングでオフラインだったか。**復帰の瞬間**を捕まえるために持つ（§8.2）。
     private var wasOffline = false
+    /// R-G08: 未送信があるため**保留した**接続設定の適用先。
+    /// 送信が終わった時点で自動的に適用する。保留したまま忘れると、
+    /// **保存済みのプロファイルと、動いている rcd の認証情報が食い違ったまま残る**
+    /// — ユーザーが次に設定を保存するまで、古い認証情報でアップロードが続く。
+    private var deferredActivation: Profile?
 
     @Published private(set) var isTerminating = false
     /// R-G10: ログアウト・シャットダウン時は OS の強制終了タイムアウトがあるため待機を短縮する
@@ -259,8 +264,11 @@ final class AppModel: ObservableObject {
             // R-G08 と同じ理由: 作り直す前に未送信データを守る。
             // これを省くと、設定を保存しただけでアプリ終了時と同じデータ喪失が起きる。
             if liveState.pendingUploads > 0 {
+                // **保留したことを覚えておく。** 覚えないと、送信が終わっても
+                // 誰も再適用せず、古い認証情報のまま動き続ける。
+                deferredActivation = profile
                 toast = "未送信のファイルが \(liveState.pendingUploads) 件あるため、"
-                    + "接続設定の変更は送信完了後に反映されます。"
+                    + "接続設定の変更は送信完了後に自動で反映されます。"
                 await restartPolling(profile: profile)
                 return
             }
@@ -406,6 +414,24 @@ final class AppModel: ObservableObject {
     func setAllowDirectWriteToPublic(_ allow: Bool) async {
         guard var profile = activeProfile, let client else { return }
         guard profile.advanced.allowDirectWriteToPublic != allow else { return }
+
+        // **再マウントは unmount を伴う。未送信データが残っていると失われる。**
+        //
+        // 特に危ないのは direct-write を**切る**とき（allow == false）。
+        // 有効だった間にユーザーが Finder から public バケットへ直接置いたファイルが、
+        // まだ VFS の write-back に載っていることがある。そのまま外すと消える。
+        // 終了時（§8.3）や接続設定の変更（R-G08）と同じ扱いにする。
+        //
+        // ポーリングの値は最大 5 秒古いので、**判断の直前に取り直す**。
+        if let fresh = try? await client.vfsStats() {
+            await poller?.applyFreshVfsStats(fresh)
+        }
+        if liveState.pendingUploads > 0 {
+            toast = "未送信のファイルが \(liveState.pendingUploads) 件あります。"
+                + "送信が終わってから切り替えてください。"
+            return
+        }
+
         profile.advanced.allowDirectWriteToPublic = allow
         do {
             document = try await offMain { [profileStore] in try profileStore.upsert(profile) }
@@ -432,6 +458,18 @@ final class AppModel: ObservableObject {
 
     private func apply(_ state: LiveState) {
         let currentPaths = Set(state.mounts.map { canonical($0.mountPoint) })
+
+        // R-G08: 未送信のため保留していた接続設定を、送信が終わった時点で適用する。
+        // ここを通さないと、ユーザーが次に設定画面を開いて保存し直すまで反映されない。
+        if let deferred = deferredActivation, state.pendingUploads == 0, startupFinished {
+            deferredActivation = nil
+            logger.notice("未送信が解消したため、保留していた接続設定を適用する（R-G08）")
+            Task { [weak self] in
+                guard let self else { return }
+                do { try await self.activate(profile: deferred) }
+                catch { self.presentErrorSync(error) }
+            }
+        }
 
         // §8.2「ネットワーク断」: 復帰したら `vfs/refresh` を 1 回だけ実行する。
         //
