@@ -28,6 +28,16 @@ public struct AppPaths: Sendable {
     /// §7.2: 発行履歴（key・発行時刻・期限のみ。URL は保存しない・SEC-G05）
     public var shareHistory: URL { applicationSupport.appendingPathComponent("share-history.json") }
 
+    /// R-G10: 終了時に送り切れなかった未送信件数。**次回起動時に通知して消す。**
+    ///
+    /// ログアウト・シャットダウン時の待機は 20 秒で打ち切られる
+    /// （OS の強制終了タイムアウトがあるため・`LifecyclePolicy.uploadWaitLimit`）。
+    /// 打ち切られた事実をユーザーに伝える手段は**次回起動時の通知だけ**で、
+    /// これが無いと「保存したはずのものがクラウドに無い」ことに気づけない。
+    public var pendingUploadsAtExit: URL {
+        applicationSupport.appendingPathComponent("pending-at-exit.json")
+    }
+
     /// VFS キャッシュ。0700。
     public func cacheDir(profileId: String) -> URL {
         caches.appendingPathComponent(profileId, isDirectory: true)

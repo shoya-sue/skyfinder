@@ -188,7 +188,7 @@ public actor RcdSupervisor {
         if let record = pidFile.read() {
             result.hadPidFile = true
             let pid = record.pid
-            if ProcessInspector.isOurRclone(pid: pid, bundledBinary: rcloneURL) {
+            if await ProcessInspector.isOurRcloneAsync(pid: pid, bundledBinary: rcloneURL) {
                 let forced = await ProcessInspector.terminateAsync(
                     pid: pid, gracePeriod: config.terminationGrace)
                 result.reclaimedPIDs.append(pid)
@@ -201,7 +201,10 @@ public actor RcdSupervisor {
         // 実行パスが同梱バイナリと一致するものだけを対象にして、
         // 他のアプリやユーザー自身の rclone を巻き込まない。
         let already = Set(result.reclaimedPIDs)
-        for pid in ProcessInspector.findOrphanRclonePIDs(bundledBinary: rcloneURL, excluding: already) {
+        // 非同期版を使う。同期版は `/bin/ps` の終了までスレッドを止めるため、
+        // actor の中から呼ぶと協調スレッドプールを塞ぐ（M-19 と同じ問題）。
+        for pid in await ProcessInspector.findOrphanRclonePIDsAsync(
+            bundledBinary: rcloneURL, excluding: already) {
             let forced = await ProcessInspector.terminateAsync(
                 pid: pid, gracePeriod: config.terminationGrace)
             result.reclaimedPIDs.append(pid)

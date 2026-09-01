@@ -156,3 +156,60 @@ struct LifecyclePolicyTests {
                                                  manuallyUnmounted: ["public"]) == ["private"])
     }
 }
+
+/// §8.2「ネットワーク断」の判定。
+///
+/// 設計書の断対応表は 4 行あり、他の 3 行（アプリからのアンマウント・手動アンマウント・
+/// rcd 死亡）は実装されていたが、**この行だけ丸ごと未実装だった**。
+/// `RcCoreStats.errors` はデコードされるだけでどこからも読まれない
+/// デッドフィールドになっていた。
+@Suite("§8.2 ネットワーク断の判定")
+struct OfflineDecisionTests {
+
+    /// 比較対象が無い最初のサンプルで断にしてはいけない
+    /// （起動直後に errors が非ゼロでも、それは「増えた」ことを意味しない）。
+    @Test("初回は判定しない")
+    func firstSampleIsNeverOffline() {
+        let decision = LifecyclePolicy.offlineDecision(
+            previousErrors: nil, currentErrors: 100, consecutiveIncreases: 0)
+        #expect(!decision.isOffline)
+        #expect(decision.streak == 0)
+    }
+
+    /// **1 回の増加で断にしてはいけない。** 転送 1 件の失敗でも errors は増えるので、
+    /// 1 回で断にするとオフラインバッジが点滅する。
+    @Test("1 回の増加では断にしない")
+    func singleIncreaseIsNotOffline() {
+        let decision = LifecyclePolicy.offlineDecision(
+            previousErrors: 1, currentErrors: 2, consecutiveIncreases: 0)
+        #expect(!decision.isOffline)
+        #expect(decision.streak == 1)
+    }
+
+    @Test("2 回続けて増えたら断とみなす")
+    func twoConsecutiveIncreasesMeanOffline() {
+        let decision = LifecyclePolicy.offlineDecision(
+            previousErrors: 2, currentErrors: 3, consecutiveIncreases: 1)
+        #expect(decision.isOffline)
+        #expect(decision.streak == 2)
+    }
+
+    /// 増加が止まったら連続回数を **0 に戻す**。戻さないと、一度断になった後は
+    /// 何をしても復帰しなくなり、復帰時の `vfs/refresh` が永久に発火しない。
+    @Test("増加が止まったら復帰し、連続回数は 0 に戻る")
+    func noIncreaseResetsStreak() {
+        let decision = LifecyclePolicy.offlineDecision(
+            previousErrors: 5, currentErrors: 5, consecutiveIncreases: 4)
+        #expect(!decision.isOffline)
+        #expect(decision.streak == 0)
+    }
+
+    /// rcd を作り直すと errors はゼロに戻る。**減少を「増加」と誤解しない**こと。
+    @Test("errors が減ったら復帰扱い（rcd 再起動でカウンタが戻る）")
+    func decreaseIsTreatedAsRecovery() {
+        let decision = LifecyclePolicy.offlineDecision(
+            previousErrors: 10, currentErrors: 0, consecutiveIncreases: 3)
+        #expect(!decision.isOffline)
+        #expect(decision.streak == 0)
+    }
+}

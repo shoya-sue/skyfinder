@@ -118,9 +118,19 @@ public enum R2Verification {
             add(Check("G1-9.0", "rcd を起動できる", true, "port=\(endpoint.port)"))
         } catch {
             add(Check("G1-9.0", "rcd を起動できる", false, String(describing: error)))
+            await supervisor.stop()
             return checks
         }
-        defer { Task { await supervisor.stop() } }
+
+        // **`defer` で止めてはいけない。** `defer` の中では `await` できないため
+        // `Task { await supervisor.stop() }` と書くことになるが、それは
+        // **停止の完了を待たずに `run` が返る**。呼び出し側（`SkyFolderApp.runCommandLine`）は
+        // 戻り値を受け取った直後に `exit()` するので、停止用の Task が走り切る前に
+        // プロセスが消え、**rcd が launchd に引き取られて孤児化する**
+        // — CRIT-03 としてアプリ自身が警戒している状態を、検証ツールが確実に作る。
+        //
+        // したがって**すべての脱出経路で明示的に `await supervisor.stop()` を呼ぶ**。
+        // 早期 return を足すときは、その直前に必ず入れること。
 
         let fs = AppIdentity.fs(bucketName: input.privateBucket)
         let probeKey = "\(AppIdentity.probeKeyPrefix)\(RandomToken.probeSuffix()).txt"
@@ -134,10 +144,12 @@ public enum R2Verification {
             add(Check("G1-9.1a", "SigV4 署名が成立し operations/list が通る", true, fs))
         } catch let error as RcError {
             add(Check("G1-9.1a", "SigV4 署名が成立し operations/list が通る", false, error.message))
+            await supervisor.stop()
             return checks
         } catch {
             add(Check("G1-9.1a", "SigV4 署名が成立し operations/list が通る", false,
                       error.localizedDescription))
+            await supervisor.stop()
             return checks
         }
 
@@ -402,6 +414,9 @@ public enum R2Verification {
         }
         add(Check("CLEANUP", "プローブを片付けた", true, "\(removed) 件削除"))
 
+        // 正常終了の経路。呼び出し側は戻り値を受け取ってすぐ exit() するので、
+        // ここで rcd の停止を**待ち切ってから**返す。
+        await supervisor.stop()
         return checks
     }
 

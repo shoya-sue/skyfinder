@@ -32,6 +32,23 @@ struct RootView: View {
             }
         }
         .task { await model.start() }
+        // §5.3 (b) / §5.5: メニューバーからの画面要求を受け取る。
+        // メニューバーは別シーンなので、この `@State` を直接は立てられない。
+        .onChange(of: model.sheetRequest) { _, request in
+            guard let request else { return }
+            switch request {
+            case .share:
+                // ファイルはダイアログ側の「選択…」で選ぶ（`pickFiles()`）。
+                // Finder 経由の共有と違い、対象が未確定の状態で開く。
+                shareTargets = []
+                showShareDialog = true
+            case .publishedList:
+                showPublishedList = true
+            case .diagnostics:
+                showDiagnostics = true
+            }
+            model.sheetRequest = nil
+        }
         .sheet(isPresented: $showShareDialog) {
             ShareDialogView(fileURLs: shareTargets)
                 .environmentObject(model)
