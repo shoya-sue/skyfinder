@@ -53,7 +53,7 @@
 | 同梱 rclone のライセンス | **MIT の許諾文を `.app` に同梱**（`Contents/Resources/rclone-LICENSE.txt`・1345 バイト / 23 行）。公式配布 zip に LICENSE ファイルは無く、README.txt から抽出している | `fetch-rclone.sh` 実行 → DMG をマウントして `.app` 内を確認 | 2026-09-01 |
 | DMG のビルド | `./scripts/build.sh release dmg` で 37MB の `dist/SkyFolder.dmg` が生成される | 実行して成果物を確認 | 2026-09-01 |
 | **観点を分けた独立レビュー（3 体）を通した** | critical 0 件・**high 7 件**。**7 件すべて修正済み**（M-28）。うち 1 件は SEC-08 の実害（IPTC の `PersonInImage` が公開画像に残っていた） | 3 体とも `REQUEST_CHANGES` を返し、指摘を回収して修正・回帰テストを追加 | 2026-09-01 |
-| **Release からダウンロードして動く** | v1.0.0 を公開。`gh release download` で取得した DMG は **SHA-256 一致**（`4f9e0e93…`）、マウントでき、取り出した `.app` の自己診断が **19/20 通過・exit=0**。`rclone-LICENSE.txt` の同梱も確認 | 実際にダウンロードして実行 | 2026-09-01 |
+| **Release からダウンロードして動く** | **v1.0.1** を公開。`gh release download` で取得した DMG は **SHA-256 一致**（`33ac4f63…`）、マウントでき、取り出した `.app` の自己診断が **19/20 通過・exit=0**。`rclone-LICENSE.txt` の同梱も確認 | 実際にダウンロードして実行 | 2026-09-01 |
 | **配布物は Gatekeeper に拒否される** | ad-hoc 署名のため `spctl -a -t execute` → **`rejected`**。ダウンロード後は quarantine が付き、**初回はダブルクリックで開かない**。ただし**バンドル自体は健全**（`codesign -v --deep --strict` は通る） | quarantine 属性を付けて `spctl` / `codesign` で判定 | 2026-09-01 |
 | 改名の追随 | Swift / sh / yml / json / md での旧名参照 **0 件**。設計書 §15.1 の「現在のリポジトリ名」を更新 | `grep -rn -i r2-finder` | 2026-09-01 |
 
