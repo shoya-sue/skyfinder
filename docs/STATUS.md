@@ -111,7 +111,7 @@
 
 | # | 内容 | 完了条件 |
 |---|---|---|
-| 1 | **カスタムドメイン `skyfolder.fracturelab.dev` を割り当てる**（Cloudflare ダッシュボード） | `curl -I https://skyfolder.fracturelab.dev/` が 200。**wrangler にドメイン追加のコマンドが無く、API トークンも手元に無いため、この操作だけは手で行う** |
+| 1 | **DNS レコードを 1 本作る**（下記）。**これだけが残っている** | `curl -I https://skyfolder.fracturelab.dev/` が 200 |
 | 2 | **Search Console / Bing に sitemap を登録する** | `https://skyfolder.fracturelab.dev/sitemap.xml` を送信し、受理される |
 | 3 | **T-G18** — Mac を再起動してマウントが復活するか確かめる | 再起動後に Finder でマウントが見える。結果を §2 か §3 に移す |
 | 4 | （完了）別ベンダーの独立レビュー | **GitHub Copilot CLI で取得済み**（§2）。Codex は 2026-09-01 時点で PATH・npm global・brew のいずれにも存在せず実行できなかった。Grok は 402 |
@@ -119,6 +119,23 @@
 > **完了済み（2026-09-01）**
 > - ~~git init~~ → `9accc11` で初期化・75 ファイル追跡（§2）
 > - ~~自己診断の SEC-G06 を `activeMode` ベースに直す~~ → M-27 で修正。**その結果 SEC-G06 (a) の未達が確定**（§2 / §3-1）
+
+> **#1 の手順**（Cloudflare ダッシュボード → `fracturelab.dev` → DNS → レコードを追加）
+>
+> | 項目 | 値 |
+> |---|---|
+> | Type | `CNAME` |
+> | Name | `skyfolder` |
+> | Target | `skyfolder.pages.dev` |
+> | Proxy | **ON（オレンジの雲）** |
+>
+> **Pages 側のカスタムドメイン登録は済んでいる**（`skyfolder.fracturelab.dev` が `pending` で待っている）。
+> DNS が引けるようになると自動で `active` になり、証明書も発行される。
+>
+> **なぜ手作業なのか**: `wrangler` にドメイン追加のコマンドが無く、
+> 手元の認証情報では DNS を書けない。1Password の Cloudflare トークン 4 種はいずれも
+> `POST /zones/{id}/dns_records` が **403**、`wrangler` の OAuth スコープは **`zone (read)` のみ**。
+> DNS 編集権限を持つ API トークンがあれば、コマンドからでも作れる。
 
 ### 4-2. R2 の認証情報が手に入ったらできる
 
