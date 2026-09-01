@@ -65,8 +65,16 @@ struct MenuBarContentView: View {
                 }
             }
 
-            Button("共有…") { openWindow(id: "main") }
-            Button("公開物一覧") { openWindow(id: "main") }
+            // §5.3 (b): メニューバーからの共有。ウィンドウを開くだけでは
+            // ファイル選択に到達しないので、開く画面をモデル経由で伝える。
+            Button("共有…") {
+                model.sheetRequest = .share
+                openWindow(id: "main")
+            }
+            Button("公開物一覧") {
+                model.sheetRequest = .publishedList
+                openWindow(id: "main")
+            }
 
             if model.document.profiles.count > 1 {
                 Menu("プロファイル") {
@@ -81,7 +89,10 @@ struct MenuBarContentView: View {
             Divider()
 
             SettingsLink { Text("設定…") }
-            Button("診断…") { openWindow(id: "main") }
+            Button("診断…") {
+                model.sheetRequest = .diagnostics
+                openWindow(id: "main")
+            }
 
             Divider()
             Button("SkyFolder を終了") { NSApp.terminate(nil) }
@@ -91,6 +102,19 @@ struct MenuBarContentView: View {
 
     @ViewBuilder
     private var statusLine: some View {
+        Group {
+            // §8.2「ネットワーク断」: マウントは維持したまま、状態だけを知らせる。
+            // 断だからといってアンマウントはしない（そのほうが復帰時に何もしなくて済む）。
+            if model.liveState.isOffline {
+                Label("オフライン（接続を確認しています）", systemImage: "wifi.slash")
+                    .foregroundStyle(BrandColor.publicWarning)
+            }
+            stateDescription
+        }
+    }
+
+    @ViewBuilder
+    private var stateDescription: some View {
         switch model.menuBarState {
         case .normal:
             Text("すべて正常")

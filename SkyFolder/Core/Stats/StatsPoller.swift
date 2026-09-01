@@ -8,6 +8,9 @@ public struct LiveState: Sendable, Equatable {
     public var vfsStats: RcVfsStats?
     public var lastUpdated: Date?
     public var lastError: String?
+    /// §8.2「ネットワーク断」: `core/stats` の errors が増え続けている間は true。
+    /// **マウントは維持する**（外さない）。UI はバッジで示すだけにする。
+    public var isOffline = false
 
     public var isTransferring: Bool { (coreStats?.transfers ?? 0) > 0 }
     /// §5.2「未送信 N 件」
@@ -67,6 +70,11 @@ public actor StatsPoller {
 
     /// 単調増加のシーケンス番号。状態変更のたびに進める。
     private var stateGeneration: UInt64 = 0
+
+    /// 直前に見た `core/stats` の errors。**増加**の検出に使う（§8.2）。
+    private var lastCoreErrors: Int?
+    /// 連続して増えた回数。1 回の増加では断と決めない。
+    private var consecutiveErrorIncreases = 0
 
     public init(client: RcClient, intervals: Intervals = Intervals()) {
         self.client = client
@@ -168,8 +176,21 @@ public actor StatsPoller {
         guard let stats = try? await client.coreStats() else { return }
         guard generation == stateGeneration else { return }
         state.coreStats = stats
+        state.isOffline = updateOfflineState(errors: stats.errors)
         state.lastUpdated = Date()
         observer?(state)
+    }
+
+    /// §8.2: ネットワーク断の検知。判定そのものは `LifecyclePolicy.offlineDecision`
+    /// （純粋関数・テストで固定してある）にあり、ここは状態の持ち回りだけを行う。
+    private func updateOfflineState(errors: Int) -> Bool {
+        let decision = LifecyclePolicy.offlineDecision(
+            previousErrors: lastCoreErrors,
+            currentErrors: errors,
+            consecutiveIncreases: consecutiveErrorIncreases)
+        lastCoreErrors = errors
+        consecutiveErrorIncreases = decision.streak
+        return decision.isOffline
     }
 
     /// §8.3: 終了判定のように「最新の値でなければ困る」場面で、

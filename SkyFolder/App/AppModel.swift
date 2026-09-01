@@ -32,6 +32,21 @@ final class AppModel: ObservableObject {
     /// 署名後の実体。照合対象ではない（T-G30 の注記を参照）
     @Published private(set) var rcloneEmbeddedSHA256 = ""
 
+    /// §5.3 (b) / §5.5: メニューバーから画面を開く要求。
+    ///
+    /// シートは `RootView` の `@State` で開くため、**別シーンであるメニューバーからは
+    /// 直接立てられない**。ここを経由して伝える（`RootView` が拾ったら nil に戻す）。
+    /// これが無いと「共有…」「公開物一覧」「診断…」を押してもメイン画面が出るだけになり、
+    /// §5.3 が規定する 2 つの起動経路のうち (b) が成立しない。
+    enum SheetRequest: String, Identifiable, Sendable {
+        case share
+        case publishedList
+        case diagnostics
+        var id: String { rawValue }
+    }
+
+    @Published var sheetRequest: SheetRequest?
+
     @Published var currentError: CatalogedError?
     @Published var toast: String?
     @Published private(set) var isBusy = false
@@ -46,6 +61,8 @@ final class AppModel: ObservableObject {
     private var manuallyUnmountedAliases: Set<String> = []
     /// 直前のポーリングで見えていたマウント。断の検知に使う。
     private var previouslyMountedPaths: Set<String> = []
+    /// 直前のポーリングでオフラインだったか。**復帰の瞬間**を捕まえるために持つ（§8.2）。
+    private var wasOffline = false
 
     @Published private(set) var isTerminating = false
     /// R-G10: ログアウト・シャットダウン時は OS の強制終了タイムアウトがあるため待機を短縮する
@@ -105,6 +122,38 @@ final class AppModel: ObservableObject {
     var activeProfile: Profile? { document.activeProfile }
     var needsOnboarding: Bool { document.profiles.isEmpty || document.activeProfileId.isEmpty }
 
+    // MARK: - メインスレッドを止めないための退避
+    //
+    // `AppModel` は `@MainActor`。ここから同期 I/O をそのまま呼ぶと、
+    // **その間 UI 全体（メニューバー常駐を含む）が固まる。**
+    //
+    // 対象:
+    // - `ProfileStore`（`Data(contentsOf:)` と `AtomicFileWriter` 内の `fsync`）
+    // - `KeychainStore`（`SecItemCopyMatching` / `SecItemAdd`。**アンロック待ちや
+    //   iCloud 同期と競合すると待たされる**）
+    // - 同梱 rclone の SHA-256（**88MB**。低速ディスクでは体感できる長さになる）
+    //
+    // いずれも「速いはず」だが、遅くなる条件が実在するものばかり。速い前提で
+    // メインスレッドに置くと、遅くなったときに固まる形で表面化する。
+
+    nonisolated private func offMain<T>(
+        _ work: @escaping @Sendable () throws -> T) async throws -> T {
+        try await withCheckedThrowingContinuation { continuation in
+            DispatchQueue.global(qos: .userInitiated).async {
+                do { continuation.resume(returning: try work()) }
+                catch { continuation.resume(throwing: error) }
+            }
+        }
+    }
+
+    nonisolated private func offMain<T>(_ work: @escaping @Sendable () -> T) async -> T {
+        await withCheckedContinuation { continuation in
+            DispatchQueue.global(qos: .userInitiated).async {
+                continuation.resume(returning: work())
+            }
+        }
+    }
+
     // MARK: - §8.1 起動シーケンス
     //
     // 手順 0〜8 は「前回どこで落ちたか」を問わず毎回すべて実行する。
@@ -124,14 +173,28 @@ final class AppModel: ObservableObject {
                 logger.notice("孤児 rcd を回収: \(reclaim.reclaimedPIDs.count, privacy: .public) 件")
             }
 
+            // R-G10: 前回、未送信を送り切れずに終了していたら知らせる。
+            // ログアウト時の待機は 20 秒で打ち切られるので、**これが唯一の事後通知**。
+            if let previous = consumePendingUploadsAtExit() {
+                notify(title: "前回未送信のデータがありました",
+                       body: "\(previous.count) 件がクラウドへ送られないまま終了しました。"
+                           + "同じファイルをもう一度保存すると送信されます。")
+            }
+
             // 1. profiles.json 読込・スキーマバージョン検証
-            document = try profileStore.load()
+            document = try await offMain { [profileStore] in try profileStore.load() }
 
             // 3. 同梱 rclone のバージョン確認（v1.68 未満なら E-02）
             let version = try await supervisor.verifyVersion()
             rcloneVersion = version.version
-            rcloneEmbeddedSHA256 = DiagnosticsCollector.sha256(ofFileAt: rcloneURL) ?? ""
-            rcloneDistributionSHA256 = DiagnosticsCollector.distributionSHA256()?.sha ?? ""
+            // 88MB のハッシュ計算。メインスレッドで回すと起動が固まる。
+            let embeddedSHA = await offMain { [rcloneURL] in
+                DiagnosticsCollector.sha256(ofFileAt: rcloneURL)
+            }
+            rcloneEmbeddedSHA256 = embeddedSHA ?? ""
+            rcloneDistributionSHA256 = await offMain {
+                DiagnosticsCollector.distributionSHA256()?.sha
+            } ?? ""
 
             await supervisor.setHandlers(
                 onRestarted: { [weak self] endpoint in
@@ -168,7 +231,9 @@ final class AppModel: ObservableObject {
         try paths.ensureDirectories(profileId: profile.id)
 
         // 2. Keychain から認証情報を取得。失敗したら設定画面へ誘導して停止する。
-        let credentials = try profileStore.credentials(for: profile)
+        let credentials = try await offMain { [profileStore] in
+            try profileStore.credentials(for: profile)
+        }
 
         // SEC-G04: 実値をマスカに登録する
         masker = LogMasker(secrets: [credentials.accessKeyId, credentials.secretAccessKey],
@@ -343,7 +408,7 @@ final class AppModel: ObservableObject {
         guard profile.advanced.allowDirectWriteToPublic != allow else { return }
         profile.advanced.allowDirectWriteToPublic = allow
         do {
-            document = try profileStore.upsert(profile)
+            document = try await offMain { [profileStore] in try profileStore.upsert(profile) }
         } catch {
             presentErrorSync(error); return
         }
@@ -368,6 +433,17 @@ final class AppModel: ObservableObject {
     private func apply(_ state: LiveState) {
         let currentPaths = Set(state.mounts.map { canonical($0.mountPoint) })
 
+        // §8.2「ネットワーク断」: 復帰したら `vfs/refresh` を 1 回だけ実行する。
+        //
+        // これは表示の問題ではなく**内容の正しさ**に効く。切断中に陳腐化した
+        // VFS のディレクトリキャッシュは、復帰しても TTL が切れるまで古いまま見え続ける。
+        // マウント自体は維持されるので、ユーザーは「つながっているのに中身が古い」状態を見る。
+        if wasOffline, !state.isOffline {
+            logger.notice("ネットワーク復帰を検知。vfs/refresh を 1 回実行する（§8.2）")
+            Task { [weak self] in await self?.refreshVFSAfterReconnect() }
+        }
+        wasOffline = state.isOffline
+
         // Finder / コマンドで手動アンマウントされた → 自動再マウントせず通知する（§8.2）
         if let profile = activeProfile, startupFinished {
             var buckets: [String: String] = [:]
@@ -387,9 +463,14 @@ final class AppModel: ObservableObject {
 
     private func handleRcdRestarted(_ endpoint: RcEndpoint) async {
         // 再起動で rc-user / rc-pass が変わるので、マスカも作り直す（SEC-G04）
-        if let profile = activeProfile,
-           let credentials = try? profileStore.credentials(for: profile) {
-            rebuildMasker(credentials: credentials, accountId: profile.accountId, endpoint: endpoint)
+        if let profile = activeProfile {
+            let credentials = try? await offMain { [profileStore] in
+                try profileStore.credentials(for: profile)
+            }
+            if let credentials {
+                rebuildMasker(credentials: credentials,
+                              accountId: profile.accountId, endpoint: endpoint)
+            }
         }
         let client = RcClient(endpoint: endpoint)
         self.client = client
@@ -462,7 +543,41 @@ final class AppModel: ObservableObject {
         await finishTermination()
     }
 
+    /// R-G10: 送り切れずに終了した事実を残す。次回起動時に通知する。
+    ///
+    /// すべての終了経路（待機して超過 / そのまま終了 / 未送信ゼロ）がここを通る。
+    /// **ゼロのときは記録を消す** — 消さないと、次に正常終了しても古い記録で通知が出る。
+    struct PendingAtExit: Codable, Sendable {
+        let count: Int
+        let at: Date
+    }
+
+    private func recordPendingUploadsAtExit(_ count: Int) {
+        let url = paths.pendingUploadsAtExit
+        guard count > 0 else {
+            try? FileManager.default.removeItem(at: url)
+            return
+        }
+        guard let data = try? JSONEncoder().encode(PendingAtExit(count: count, at: Date())) else {
+            return
+        }
+        try? data.write(to: url, options: .atomic)
+    }
+
+    /// 記録があれば読んで**消す**（読んだら消す。同じ通知を毎回出さないため）。
+    private func consumePendingUploadsAtExit() -> PendingAtExit? {
+        let url = paths.pendingUploadsAtExit
+        defer { try? FileManager.default.removeItem(at: url) }
+        guard let data = try? Data(contentsOf: url),
+              let record = try? JSONDecoder().decode(PendingAtExit.self, from: data)
+        else { return nil }
+        return record
+    }
+
     private func finishTermination() async {
+        // R-G10: 未送信を残したまま終了する場合、その事実を次回起動へ引き渡す。
+        // ここは終了の共通経路なので、待機の超過も「そのまま終了」も両方通る。
+        recordPendingUploadsAtExit(liveState.pendingUploads)
         pendingUploadsAtTermination = nil
         await poller?.stop()
         logWatcher?.stop()
@@ -509,7 +624,9 @@ final class AppModel: ObservableObject {
         previouslyMountedPaths.removeAll()
         appliedRestartSignature = nil
         do {
-            document = try profileStore.setActive(profileId: profileId)
+            document = try await offMain { [profileStore] in
+                try profileStore.setActive(profileId: profileId)
+            }
             guard let profile = document.activeProfile else { return false }
             try await activate(profile: profile)
             return true
@@ -557,8 +674,10 @@ final class AppModel: ObservableObject {
 
     func saveProfile(_ profile: Profile, credentials: R2Credentials?, makeActive: Bool) async {
         do {
-            document = try profileStore.upsert(profile, credentials: credentials,
-                                               makeActive: makeActive)
+            document = try await offMain { [profileStore] in
+                try profileStore.upsert(profile, credentials: credentials,
+                                        makeActive: makeActive)
+            }
             let toastBefore = toast
             if makeActive || document.activeProfileId == profile.id {
                 try await activate(profile: profile)
@@ -574,7 +693,9 @@ final class AppModel: ObservableObject {
     func deleteProfile(_ profileId: String) async {
         do {
             let wasActive = document.activeProfileId == profileId
-            document = try profileStore.delete(profileId: profileId)
+            document = try await offMain { [profileStore] in
+                try profileStore.delete(profileId: profileId)
+            }
             if wasActive {
                 // §8.3 / R-G08 と同じ手順で畳む。畳み方が甘いと、
                 // 止まった rcd のマウント一覧を UI が描画し続ける（§02 DESIGN INVARIANT 違反）。
@@ -643,6 +764,17 @@ final class AppModel: ObservableObject {
             isTransferring: liveState.isTransferring,
             transferSpeed: liveState.transferSpeed,
             pendingUploads: liveState.pendingUploads)
+    }
+
+    /// §8.2: ネットワーク復帰時の 1 回だけの `vfs/refresh`。
+    ///
+    /// ユーザーが押す再試行（`retryPendingUploads`）とは**発火の契機が違う**。
+    /// あちらは未送信キャッシュの押し出しで、こちらは陳腐化したディレクトリ
+    /// キャッシュの破棄。同じ RC API を呼ぶが目的が別なので分けてある。
+    private func refreshVFSAfterReconnect() async {
+        guard let client else { return }
+        _ = try? await client.callRaw(RcPath.vfsRefresh)
+        await poller?.refreshNow()
     }
 
     /// §5.5: 未送信キャッシュがあるときの再試行

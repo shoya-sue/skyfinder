@@ -17,52 +17,98 @@ public enum ProcessInspector {
     /// PID の実行ファイルパス。取れなければ nil。
     public static func executablePath(pid: pid_t) -> String? {
         guard pid > 0 else { return nil }
+        // proc_pidpath が使えない場合のフォールバック（M-09 が実測で使った手段）
+        return executablePathFast(pid: pid) ?? psCommand(pid: pid)
+    }
+
+    /// `proc_pidpath` だけを使う版。**サブプロセスを起動しない**ので非同期文脈でも安全。
+    private static func executablePathFast(pid: pid_t) -> String? {
         var buffer = [CChar](repeating: 0, count: Int(MAXPATHLEN) * 4)
         let length = proc_pidpath(pid, &buffer, UInt32(buffer.count))
-        if length > 0 {
-            return String(cString: buffer)
-        }
-        // proc_pidpath が使えない場合のフォールバック（M-09 が実測で使った手段）
-        return psCommand(pid: pid)
+        return length > 0 ? String(cString: buffer) : nil
     }
 
     private static func psCommand(pid: pid_t) -> String? {
+        let text = runPSSync(arguments: ["-p", String(pid), "-o", "comm="])?
+            .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return text.isEmpty ? nil : text
+    }
+
+    /// `/bin/ps` を同期実行する。**`waitUntilExit()` はスレッドを止める。**
+    /// actor や Task の中からは `runPS`（非同期版）を使うこと。
+    private static func runPSSync(arguments: [String]) -> String? {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/bin/ps")
-        process.arguments = ["-p", String(pid), "-o", "comm="]
+        process.arguments = arguments
         let pipe = Pipe()
         process.standardOutput = pipe
         process.standardError = FileHandle.nullDevice
         do { try process.run() } catch { return nil }
         let data = pipe.fileHandleForReading.readDataToEndOfFile()
         process.waitUntilExit()
-        let text = String(data: data, encoding: .utf8)?
-            .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        return text.isEmpty ? nil : text
+        return String(data: data, encoding: .utf8)
+    }
+
+    /// `/bin/ps` を**協調スレッドプールの外**で走らせる。
+    ///
+    /// `Process` の起動と `waitUntilExit()` は同期的にスレッドを止める。
+    /// actor（`RcdSupervisor`）の中からそのまま呼ぶと協調スレッドプールの 1 本を占有し、
+    /// 他の Task の進行を止める — **M-19 で `Thread.sleep` について是正したのと同じ問題**が
+    /// `Process` の側に残っていた。
+    private static func runPS(arguments: [String]) async -> String? {
+        await withCheckedContinuation { continuation in
+            DispatchQueue.global(qos: .utility).async {
+                continuation.resume(returning: runPSSync(arguments: arguments))
+            }
+        }
     }
 
     /// この PID が「自分が起動した rclone」か。実行パスの一致で判定する（§8.6.2 (b)）。
     public static func isOurRclone(pid: pid_t, bundledBinary: URL) -> Bool {
         guard isAlive(pid: pid), let path = executablePath(pid: pid) else { return false }
-        return URL(fileURLWithPath: path).standardizedFileURL.path
+        return matchesBundledBinary(path, bundledBinary)
+    }
+
+    /// `isOurRclone` の非同期版。**actor や Task の中からはこちらを使う。**
+    /// `proc_pidpath` で足りるときはサブプロセスを起こさず、駄目なときだけ
+    /// `/bin/ps` へ落ちる（その 1 回も協調スレッドプールの外で走らせる）。
+    public static func isOurRcloneAsync(pid: pid_t, bundledBinary: URL) async -> Bool {
+        guard isAlive(pid: pid) else { return false }
+        if let path = executablePathFast(pid: pid) {
+            return matchesBundledBinary(path, bundledBinary)
+        }
+        guard let text = await runPS(arguments: ["-p", String(pid), "-o", "comm="]) else {
+            return false
+        }
+        let path = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !path.isEmpty else { return false }
+        return matchesBundledBinary(path, bundledBinary)
+    }
+
+    private static func matchesBundledBinary(_ path: String, _ bundledBinary: URL) -> Bool {
+        URL(fileURLWithPath: path).standardizedFileURL.path
             == bundledBinary.standardizedFileURL.path
     }
 
     /// PID ファイルが無い孤児（書込み失敗・ユーザーによる手動削除）も回収できるようにする
     /// フォールバック。実行パスが同梱バイナリと一致するプロセスだけを拾う
     /// — 他のアプリや、ユーザーが自分で入れた rclone を巻き込まないため。
+    /// **注意**: これは同期版で、`/bin/ps` の終了までスレッドを止める。
+    /// actor や Task の中からは `findOrphanRclonePIDsAsync` を使うこと。
     public static func findOrphanRclonePIDs(bundledBinary: URL, excluding: Set<pid_t> = []) -> [pid_t] {
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/bin/ps")
-        process.arguments = ["-A", "-o", "pid=,comm="]
-        let pipe = Pipe()
-        process.standardOutput = pipe
-        process.standardError = FileHandle.nullDevice
-        do { try process.run() } catch { return [] }
-        let data = pipe.fileHandleForReading.readDataToEndOfFile()
-        process.waitUntilExit()
-        guard let text = String(data: data, encoding: .utf8) else { return [] }
+        guard let text = runPSSync(arguments: ["-A", "-o", "pid=,comm="]) else { return [] }
+        return parseOrphanPIDs(from: text, bundledBinary: bundledBinary, excluding: excluding)
+    }
 
+    /// `findOrphanRclonePIDs` の非同期版。**actor や Task の中からはこちらを使う。**
+    public static func findOrphanRclonePIDsAsync(bundledBinary: URL,
+                                                 excluding: Set<pid_t> = []) async -> [pid_t] {
+        guard let text = await runPS(arguments: ["-A", "-o", "pid=,comm="]) else { return [] }
+        return parseOrphanPIDs(from: text, bundledBinary: bundledBinary, excluding: excluding)
+    }
+
+    private static func parseOrphanPIDs(from text: String, bundledBinary: URL,
+                                        excluding: Set<pid_t>) -> [pid_t] {
         let target = bundledBinary.standardizedFileURL.path
         var result: [pid_t] = []
         for line in text.split(separator: "\n") {

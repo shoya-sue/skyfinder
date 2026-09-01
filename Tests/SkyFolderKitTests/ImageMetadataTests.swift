@@ -201,6 +201,80 @@ struct ImageMetadataStripperTests {
 
     // MARK: - テスト用画像の生成
 
+    /// **SEC-08（MUST）の回帰テスト。**
+    ///
+    /// 除去を「消したいキーの一覧との積集合」で書くと、**一覧に無いキーは無加工で
+    /// 出力へ引き継がれる**（`AddImageFromSource` は properties をマージするため）。
+    /// 実測（2026-09-01）: IPTC の `PersonInImage` — 写真アプリや Lightroom の顔認識が
+    /// 書き込む**被写体本人の氏名** — が、GPS も Byline も消えている裏で残っていた。
+    /// ユーザーには「除去された」ように見えるので気づけない。
+    ///
+    /// このテストは**かつての一覧に載っていなかったキー**を必ず含める。
+    /// 一覧に 1 件足すだけの修正では通らない。
+    @Test("SEC-08: 除去の一覧に無い IPTC キー（PersonInImage）も残らない")
+    func stripsIPTCKeysThatNoAllowListMentions() throws {
+        let dir = TestSupport.makeTemporaryDirectory("iptc-unlisted")
+        defer { TestSupport.remove(dir) }
+        let original = dir.appendingPathComponent("person.jpg")
+
+        try Self.writeImage(to: original, type: .jpeg, metadata: [
+            kCGImagePropertyIPTCDictionary: [
+                kCGImagePropertyIPTCByline: "Taro",              // かつての一覧にあった
+                "PersonInImage" as CFString: ["Hanako Suzuki"],  // 一覧に無かった
+            ] as [CFString: Any],
+        ])
+
+        let before = stripper.inspect(original)
+        #expect(before.identifyingKeys.contains("IPTC.PersonInImage"),
+                "前提が成立していない。原本に PersonInImage が入っていない: \(before.identifyingKeys)")
+
+        let stripped = try stripper.strip(original, into: dir)
+        let after = stripper.inspect(stripped)
+
+        #expect(!after.hasIPTC, "IPTC が残っている: \(after.identifyingKeys)")
+        #expect(!after.identifyingKeys.contains("IPTC.PersonInImage"))
+
+        // プロパティ経由で見えなくても、実体が残っていれば読める。
+        // **生バイト列でも確かめる。**
+        let bytes = try Data(contentsOf: stripped)
+        #expect(bytes.range(of: Data("Hanako Suzuki".utf8)) == nil,
+                "出力の生バイト列に被写体の氏名が残っている")
+    }
+
+    /// TIFF も同じ形の穴があった。除去側が一覧方式で、**検査側も同じ一覧でフィルタ**していたため、
+    /// 一覧外の TIFF キーは**除去にも検査にも見えない盲点**になっていた。
+    @Test("除去の一覧に無い TIFF キーも残らない（検査側の盲点だった）")
+    func stripsTIFFKeysThatNoAllowListMentions() throws {
+        let dir = TestSupport.makeTemporaryDirectory("tiff-unlisted")
+        defer { TestSupport.remove(dir) }
+        let original = dir.appendingPathComponent("doc.jpg")
+
+        try Self.writeImage(to: original, type: .jpeg, metadata: [
+            kCGImagePropertyTIFFDictionary: [
+                kCGImagePropertyTIFFMake: "TestCamera",            // かつての一覧にあった
+                kCGImagePropertyTIFFDocumentName: "secret-doc",    // 一覧に無かった
+                kCGImagePropertyTIFFOrientation: 6,                // 構造キー・残す
+            ] as [CFString: Any],
+            kCGImagePropertyOrientation: 6,
+        ])
+
+        let before = stripper.inspect(original)
+        #expect(before.identifyingKeys.contains("TIFF.DocumentName"),
+                "前提が成立していない: \(before.identifyingKeys)")
+
+        let stripped = try stripper.strip(original, into: dir)
+        let after = stripper.inspect(stripped)
+
+        #expect(!after.identifyingKeys.contains { $0.hasPrefix("TIFF.") },
+                "TIFF のキーが残っている: \(after.identifyingKeys)")
+        // 構造キーは残す（DD-001 F-16: 剥がすと横倒しになる）
+        #expect(after.orientation == 6, "Orientation が失われた")
+
+        let bytes = try Data(contentsOf: stripped)
+        #expect(bytes.range(of: Data("secret-doc".utf8)) == nil,
+                "出力の生バイト列に文書名が残っている")
+    }
+
     static func writeJPEGWithMetadata(to url: URL) throws {
         let gps: [CFString: Any] = [
             kCGImagePropertyGPSLatitude: 35.6812,

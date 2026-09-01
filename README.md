@@ -54,7 +54,7 @@ Cloudflare R2 を macOS Finder にマウントし、URL ベースで共有する
 
 ```bash
 ./scripts/build.sh release     # 同梱 rclone 取得 → アセット生成 → ビルド → 署名 → 自己診断
-./scripts/test.sh              # 全テスト（161 件・約 95 秒）
+./scripts/test.sh              # 全テスト（168 件・約 95 秒）
 ./scripts/build.sh release dmg # DMG まで作る
 ```
 
@@ -98,7 +98,7 @@ SkyFolder/
   App/                       SwiftUI エントリとライフサイクル
   UI/                        オンボーディング / メイン / 共有 / 公開物一覧 / 診断 / 設定 / メニューバー
   Resources/                 Info.plist・entitlements・同梱 rclone
-Tests/SkyFolderKitTests/     161 件（うち rcd 統合 30 — 実際に rclone を起動し NFS マウントする）
+Tests/SkyFolderKitTests/     168 件（うち rcd 統合 30 — 実際に rclone を起動し NFS マウントする）
 docs/                        設計資料。着手前に docs/README.md を読むこと
 ```
 

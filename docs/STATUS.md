@@ -35,7 +35,7 @@
 
 | 対象 | 結果 | 証拠 | 実施 |
 |---|---|---|---|
-| 自動テスト | **161 件全通過**（21 suites・約 95 秒） | `./scripts/test.sh` — 2026-09-01 に 3 回実行し、いずれも全通過 | 2026-09-01 |
+| 自動テスト | **168 件全通過**（22 suites・約 95 秒） | `./scripts/test.sh` — 2026-09-01 に複数回実行し、いずれも全通過 | 2026-09-01 |
 | 署名済み `.app` の自己診断 | **19/20 通過・警告 1 件・FAIL なし**（警告は SEC-G06。下の行を参照） | `./scripts/build.sh release` → `--selftest`。署名は `flags=0x10002(adhoc,runtime)` / `TeamIdentifier=not set` | 2026-09-01 |
 | U-03（ad-hoc の範囲） | Hardened Runtime 下で同梱 rclone を子プロセス実行できる | `--selftest` の U-03 が PASS（rclone v1.75.0 を取得） | 2026-09-01 |
 | T-G30 | 配布物の SHA-256 が `BUNDLED.md` と一致（`f52ccc22…`）。署名後の実体は別値（`dcb48186…`）で正常 | `--selftest` の T-G30 / T-G30b | 2026-09-01 |
@@ -52,6 +52,7 @@
 | git 管理 | リポジトリを初期化し 75 ファイルを追跡。生成物（`.xcodeproj` / `Assets.xcassets` / 同梱 rclone）は除外されている | `git log` / `git ls-files` | 2026-09-01 |
 | 同梱 rclone のライセンス | **MIT の許諾文を `.app` に同梱**（`Contents/Resources/rclone-LICENSE.txt`・1345 バイト / 23 行）。公式配布 zip に LICENSE ファイルは無く、README.txt から抽出している | `fetch-rclone.sh` 実行 → DMG をマウントして `.app` 内を確認 | 2026-09-01 |
 | DMG のビルド | `./scripts/build.sh release dmg` で 37MB の `dist/SkyFolder.dmg` が生成される | 実行して成果物を確認 | 2026-09-01 |
+| **観点を分けた独立レビュー（3 体）を通した** | critical 0 件・**high 7 件**。**7 件すべて修正済み**（M-28）。うち 1 件は SEC-08 の実害（IPTC の `PersonInImage` が公開画像に残っていた） | 3 体とも `REQUEST_CHANGES` を返し、指摘を回収して修正・回帰テストを追加 | 2026-09-01 |
 | **Release からダウンロードして動く** | v1.0.0 を公開。`gh release download` で取得した DMG は **SHA-256 一致**（`4f9e0e93…`）、マウントでき、取り出した `.app` の自己診断が **19/20 通過・exit=0**。`rclone-LICENSE.txt` の同梱も確認 | 実際にダウンロードして実行 | 2026-09-01 |
 | **配布物は Gatekeeper に拒否される** | ad-hoc 署名のため `spctl -a -t execute` → **`rejected`**。ダウンロード後は quarantine が付き、**初回はダブルクリックで開かない**。ただし**バンドル自体は健全**（`codesign -v --deep --strict` は通る） | quarantine 属性を付けて `spctl` / `codesign` で判定 | 2026-09-01 |
 | 改名の追随 | Swift / sh / yml / json / md での旧名参照 **0 件**。設計書 §15.1 の「現在のリポジトリ名」を更新 | `grep -rn -i r2-finder` | 2026-09-01 |
@@ -94,9 +95,12 @@
 
 ## 4. 次に実施すること（依存順）
 
-> **リリース状況**: [v1.0.0](https://github.com/shoya-sue/skyfinder/releases/tag/v1.0.0) 公開済み（2026-09-01・private リポジトリ）。
+> **リリース状況**: **[v1.0.1](https://github.com/shoya-sue/skyfinder/releases/tag/v1.0.1)**（2026-09-01・private リポジトリ）。
 > ダウンロードして起動できることは確認済みだが、**公証が無いため初回だけ手動の許可操作が要る**。
 > それを不要にするのが §4-3（G5）。
+>
+> **v1.0.0 は取り下げた**（prerelease に降格）。公開後のレビューで **SEC-08 の実害**が見つかったため
+> — IPTC の `PersonInImage`（顔認識が書き込む被写体の氏名）が公開画像に残っていた。詳細は M-28。
 
 ### 4-1. 今すぐできる（ブロッカーなし）
 

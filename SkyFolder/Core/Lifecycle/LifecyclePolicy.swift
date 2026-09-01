@@ -55,6 +55,23 @@ public enum LifecyclePolicy {
         isSystemLogout ? 20 : 300
     }
 
+    // MARK: - §8.2 ネットワーク断
+
+    /// `core/stats` の errors から断を判定する。
+    ///
+    /// errors は**累積カウンタ**なので、値そのものではなく**増えたかどうか**を見る。
+    /// 1 回の増加は単発の転送失敗でも起きるため、**2 回続けて増えたとき**に断とみなす
+    /// — ここを 1 回にすると、失敗 1 件でオフラインバッジが点滅する。
+    ///
+    /// 断と判定してもマウントは**外さない**（§8.2）。維持したままバッジで示し、
+    /// 復帰時に `vfs/refresh` を 1 回実行する。
+    public static func offlineDecision(previousErrors: Int?, currentErrors: Int,
+                                       consecutiveIncreases: Int) -> (isOffline: Bool, streak: Int) {
+        guard let previous = previousErrors else { return (false, 0) }
+        let streak = currentErrors > previous ? consecutiveIncreases + 1 : 0
+        return (streak >= 2, streak)
+    }
+
     // MARK: - R-G08 プロファイル切替
 
     public enum SwitchDecision: Sendable, Equatable {
