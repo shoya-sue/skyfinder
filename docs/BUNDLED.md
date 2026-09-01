@@ -13,8 +13,31 @@
 | go/version | go1.26.5 |
 | go/linking | **dynamic**（静的リンクではない。U-03 は解決済み → **library validation の無効化は不要**） |
 | go/tags | cmount |
+| ライセンス | **MIT**。`SkyFolder/Resources/rclone-LICENSE.txt` として `.app` に同梱する（下記） |
 | 検証日 | 2026-08-30 |
 | 検証環境 | macOS 26.6.2 (25G83) / arm64 |
+
+### ライセンス（再配布の要件）
+
+rclone は **MIT ライセンス**。バイナリを `.app` に入れて再配布する以上、
+**著作権表示と許諾文を同梱する義務がある**（「copies or substantial portions」に含めること）。
+
+**公式の配布 zip に LICENSE ファイルは入っていない。** 中身は
+`git-log.txt` / `rclone` / `rclone.1` / `README.html` / `README.txt` の 5 点で、
+ライセンス本文は **README.txt の「License」節**にある。
+
+`fetch-rclone.sh` がそこから抽出して `SkyFolder/Resources/rclone-LICENSE.txt` に置き、
+`project.yml` が `.app` のリソースとして同梱する。
+**別途 GitHub から取らない** — 同梱するバイナリのバージョンとずれうるため。
+
+抽出の注意（実測）:
+
+- 終端は `OTHER DEALINGS IN` で折り返され、**次の行が `    THE SOFTWARE.`** になる。
+  1 行に `DEALINGS IN THE SOFTWARE` は現れないので、その語で範囲を閉じようとすると
+  **awk がファイル末尾まで出し続ける**（実際に 23 行のはずが 52KB 出た）
+- したがって抽出後に本文の検査だけでなく **行数の上限（40 行）** も見る。
+  取りすぎはエラーにならないので、内容の検査だけでは通ってしまう
+- 正しく抽出できたときは **23 行 / 1345 バイト**
 
 ### このバージョンで確認済みの挙動
 
