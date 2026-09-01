@@ -58,6 +58,7 @@
 | **リポジトリを public にした** | `visibility: PUBLIC`。サイトから貼っている GitHub リンク 5 本がいずれも **200** になった | `gh repo view` / `curl` | 2026-09-01 |
 | ライセンス | **MIT License**（`LICENSE` に MIT 全文のみ）。第三者コード（rclone・MIT）の表示は README 側に置く — LICENSE に混ぜると GitHub の検出が通らない | ファイルの存在と README の記述 | 2026-09-01 |
 | 製品サイト | `site/` を Cloudflare Pages（Kojin アカウント・プロジェクト `skyfolder`）へデプロイ。`/` `/robots.txt` `/sitemap.xml` `/llms.txt` `/og.png` がいずれも **200** | `curl` で全エンドポイントを確認 | 2026-09-01 |
+| **カスタムドメインが有効** | **https://skyfolder.fracturelab.dev/** が全エンドポイント **200**。証明書は `CN=skyfolder.fracturelab.dev`（Google Trust Services）。Pages 側の status / validation とも `active` | `curl --resolve` で 2 つの edge IP それぞれから確認 + Pages API | 2026-09-01 |
 | **Release からダウンロードして動く** | **v1.0.2** を公開。`gh release download` で取得した DMG は **SHA-256 一致**（`f8f38ad9…`）、マウントでき、取り出した `.app` の自己診断が **19/20 通過・exit=0**。`rclone-LICENSE.txt` の同梱も確認 | 実際にダウンロードして実行 | 2026-09-01 |
 | **配布物は Gatekeeper に拒否される** | ad-hoc 署名のため `spctl -a -t execute` → **`rejected`**。ダウンロード後は quarantine が付き、**初回はダブルクリックで開かない**。ただし**バンドル自体は健全**（`codesign -v --deep --strict` は通る） | quarantine 属性を付けて `spctl` / `codesign` で判定 | 2026-09-01 |
 | 改名の追随 | Swift / sh / yml / json / md での旧名参照 **0 件**。設計書 §15.1 の「現在のリポジトリ名」を更新 | `grep -rn -i r2-finder` | 2026-09-01 |
@@ -111,31 +112,25 @@
 
 | # | 内容 | 完了条件 |
 |---|---|---|
-| 1 | **DNS レコードを 1 本作る**（下記）。**これだけが残っている** | `curl -I https://skyfolder.fracturelab.dev/` が 200 |
-| 2 | **Search Console / Bing に sitemap を登録する** | `https://skyfolder.fracturelab.dev/sitemap.xml` を送信し、受理される |
-| 3 | **T-G18** — Mac を再起動してマウントが復活するか確かめる | 再起動後に Finder でマウントが見える。結果を §2 か §3 に移す |
+| 1 | **Search Console / Bing に sitemap を登録する** | `https://skyfolder.fracturelab.dev/sitemap.xml` を送信し、受理される |
+| 2 | **T-G18** — Mac を再起動してマウントが復活するか確かめる | 再起動後に Finder でマウントが見える。結果を §2 か §3 に移す |
 | 4 | （完了）別ベンダーの独立レビュー | **GitHub Copilot CLI で取得済み**（§2）。Codex は 2026-09-01 時点で PATH・npm global・brew のいずれにも存在せず実行できなかった。Grok は 402 |
 
 > **完了済み（2026-09-01）**
 > - ~~git init~~ → `9accc11` で初期化・75 ファイル追跡（§2）
 > - ~~自己診断の SEC-G06 を `activeMode` ベースに直す~~ → M-27 で修正。**その結果 SEC-G06 (a) の未達が確定**（§2 / §3-1）
 
-> **#1 の手順**（Cloudflare ダッシュボード → `fracturelab.dev` → DNS → レコードを追加）
+> **カスタムドメインは 2026-09-01 に有効化済み**（CNAME `skyfolder` → `skyfolder.pages.dev`・プロキシ ON）。
 >
-> | 項目 | 値 |
-> |---|---|
-> | Type | `CNAME` |
-> | Name | `skyfolder` |
-> | Target | `skyfolder.pages.dev` |
-> | Proxy | **ON（オレンジの雲）** |
+> `wrangler` にドメイン追加のコマンドが無く、手元の API トークンでは DNS を書けなかったため
+> （1Password の Cloudflare トークン 4 種はいずれも `POST /zones/{id}/dns_records` が **403**、
+> `wrangler` の OAuth スコープは **`zone (read)` のみ**）、
+> **ダッシュボードをブラウザ操作して作成した**。
 >
-> **Pages 側のカスタムドメイン登録は済んでいる**（`skyfolder.fracturelab.dev` が `pending` で待っている）。
-> DNS が引けるようになると自動で `active` になり、証明書も発行される。
->
-> **なぜ手作業なのか**: `wrangler` にドメイン追加のコマンドが無く、
-> 手元の認証情報では DNS を書けない。1Password の Cloudflare トークン 4 種はいずれも
-> `POST /zones/{id}/dns_records` が **403**、`wrangler` の OAuth スコープは **`zone (read)` のみ**。
-> DNS 編集権限を持つ API トークンがあれば、コマンドからでも作れる。
+> **確認は `curl --resolve` で行うこと。** レコード作成前に問い合わせた NXDOMAIN が
+> システムのリゾルバにネガティブキャッシュとして残り、`dig` は解決するのに
+> `curl` は `Could not resolve host` を返す状態がしばらく続く。
+> 「まだ有効になっていない」と誤診断しないこと。
 
 ### 4-2. R2 の認証情報が手に入ったらできる
 
