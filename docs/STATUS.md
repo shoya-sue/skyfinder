@@ -35,7 +35,7 @@
 
 | 対象 | 結果 | 証拠 | 実施 |
 |---|---|---|---|
-| 自動テスト | **168 件全通過**（22 suites・約 95 秒） | `./scripts/test.sh` — 2026-09-01 に複数回実行し、いずれも全通過 | 2026-09-01 |
+| 自動テスト | **176 件全通過**（25 suites・約 95 秒） | `./scripts/test.sh` — 2026-09-01 に複数回実行し、いずれも全通過 | 2026-09-01 |
 | 署名済み `.app` の自己診断 | **19/20 通過・警告 1 件・FAIL なし**（警告は SEC-G06。下の行を参照） | `./scripts/build.sh release` → `--selftest`。署名は `flags=0x10002(adhoc,runtime)` / `TeamIdentifier=not set` | 2026-09-01 |
 | U-03（ad-hoc の範囲） | Hardened Runtime 下で同梱 rclone を子プロセス実行できる | `--selftest` の U-03 が PASS（rclone v1.75.0 を取得） | 2026-09-01 |
 | T-G30 | 配布物の SHA-256 が `BUNDLED.md` と一致（`f52ccc22…`）。署名後の実体は別値（`dcb48186…`）で正常 | `--selftest` の T-G30 / T-G30b | 2026-09-01 |
@@ -52,8 +52,8 @@
 | git 管理 | リポジトリを初期化し 75 ファイルを追跡。生成物（`.xcodeproj` / `Assets.xcassets` / 同梱 rclone）は除外されている | `git log` / `git ls-files` | 2026-09-01 |
 | 同梱 rclone のライセンス | **MIT の許諾文を `.app` に同梱**（`Contents/Resources/rclone-LICENSE.txt`・1345 バイト / 23 行）。公式配布 zip に LICENSE ファイルは無く、README.txt から抽出している | `fetch-rclone.sh` 実行 → DMG をマウントして `.app` 内を確認 | 2026-09-01 |
 | DMG のビルド | `./scripts/build.sh release dmg` で 37MB の `dist/SkyFolder.dmg` が生成される | 実行して成果物を確認 | 2026-09-01 |
-| **観点を分けた独立レビュー（3 体）を通した** | critical 0 件・**high 7 件**。**7 件すべて修正済み**（M-28）。うち 1 件は SEC-08 の実害（IPTC の `PersonInImage` が公開画像に残っていた） | 3 体とも `REQUEST_CHANGES` を返し、指摘を回収して修正・回帰テストを追加 | 2026-09-01 |
-| **別ベンダーの独立レビューを取得した** | **GitHub Copilot CLI**（`copilot -p`・read-only）で実施し `REQUEST_CHANGES`。high 1 件 — **取り下げた v1.0.0 の DMG が資産として残り、ダウンロード可能だった**。public 化すると SEC-08 の欠陥入りバイナリが世界中から入手可能になる指摘。**資産を削除して対応済み** | 実行ログと、実行前後で作業ツリーが不変であることを確認 | 2026-09-01 |
+| **独立レビューを 4 経路で通した** | 同一ベンダー 3 体（high 7・M-28）+ **別ベンダー 2 つ（Copilot / Codex）と Opus / Fable**（critical 1・high 9・M-29）。**すべて修正済み** | 4 経路とも `REQUEST_CHANGES` を返し、指摘を回収して修正・回帰テストを追加 | 2026-09-01 |
+| **別ベンダーの独立レビューを 2 つ取得した** | **Copilot**（`copilot -p`）と **Codex**（`codex exec -s read-only` / gpt-5.5）。Copilot は「取り下げた v1.0.0 の DMG が資産として残る」、Codex は「`\|\| true` でビルドとテストの失敗が成功扱い」を指摘。**どちらも同一ベンダー 3 体が挙げなかったもの** | 実行ログと、実行前後で作業ツリーが不変であることを確認 | 2026-09-01 |
 | v1.0.0 の無害化 | prerelease へ降格・**配布資産を削除**・ノートを取り下げの記録に差し替え | `gh release view v1.0.0`（assets 0 件） | 2026-09-01 |
 | **リポジトリを public にした** | `visibility: PUBLIC`。サイトから貼っている GitHub リンク 5 本がいずれも **200** になった | `gh repo view` / `curl` | 2026-09-01 |
 | ライセンス | **MIT License**（`LICENSE` に MIT 全文のみ）。第三者コード（rclone・MIT）の表示は README 側に置く — LICENSE に混ぜると GitHub の検出が通らない | ファイルの存在と README の記述 | 2026-09-01 |

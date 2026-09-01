@@ -506,17 +506,73 @@ grep で照合できるのは名前だけで、振る舞いは読まないと分
 
 ---
 
+### M-29 — 3 ベンダーの独立レビューで critical 1・high 9（2026-09-01・修正済み）
+
+public 公開後に、**別ベンダー 2 つ（GitHub Copilot / Codex）と Opus / Fable** で
+レビューを取った。4 経路すべて `REQUEST_CHANGES`。
+
+#### 別ベンダーが見つけたもの（同一ベンダーは誰も挙げなかった）
+
+| 経路 | 指摘 |
+|---|---|
+| **Copilot** | **取り下げた v1.0.0 の DMG が Release 資産として残り、ダウンロード可能だった。** public 化すると SEC-08 の欠陥入りバイナリが世界中から入手可能になる。**コードではなく配布状態を見た指摘** |
+| **Codex** | `scripts/test.sh` / `build.sh` が `xcodebuild … \| grep … \|\| true` で終わっており、**ビルドとテストの失敗が成功扱い**になっていた（実測: `false \| grep x \|\| true` は 0）。build.sh は前回の `.app` が残っていればそれを署名して配布物にするため、**ソースと一致しないバイナリをリリースする経路**だった |
+
+#### 修正が新しい欠陥を作っていた（Fable・critical）
+
+M-28 で入れた `deferredActivation`（未送信があるとき接続設定の適用を保留し、
+送信完了後に自動適用する）に穴があった。
+
+`restartPolling` が作り直す `StatsPoller` の初期状態は `vfsStats == nil` で、
+`pendingUploads` は `?? 0` により **0 を返す**。`pollListMounts` は成否に関わらず
+observer を発火するため、**未送信が 1 件も送られていない時点で「0 になった」と誤認**し、
+再適用 → `unmountAll` → 未送信データの喪失に至る。
+**R-G08 が守ろうとしたデータ喪失を、保留の仕組み自体が起こす**形だった。
+
+`vfsStats` を実際に観測できたときだけ判断し、`activate` 側もキャッシュではなく
+取り直した値を使う形に直した。
+
+#### その他の high
+
+| 内容 | 指摘元 |
+|---|---|
+| legacy → data protection の昇格で**旧 legacy 項目が残る**。同じ Secret が login.keychain に残り、画面ロック中も読める。`read` は昇格後 data protection しか見ないので**残骸に気づく経路も無い** | Opus / Fable |
+| `delete` が片方の成功で `return` し、**data protection だけ消して legacy が残る** | Opus |
+| **除去対象外の画像が無加工・無警告で公開される。** RAW（`.dng` / `.cr2` / `.arw` / `.nef`）や `.heif` / `.avif` は `targetExtensions` に無く、GPS 座標や機材シリアルを抱えたまま public バケットへ上がる | Opus |
+| `@MainActor` から fsync / Keychain / 88MB の SHA-256 を同期呼び出し / actor 内の `Process` 同期実行 / `defer { Task { await stop() } }` による rcd の孤児化 | Codex |
+
+**拡張子の一覧は必ず新しい形式に置いていかれる。** 一覧を増やす代わりに、
+実際に ImageIO で開いて識別情報を持つかを見る `carriesMetadata` を足し、
+除去したいのにできない形式は**公開を中止する**（E-09 と同じ fail-closed）。
+
+#### 実測で否定した指摘（XMP）
+
+Opus は「XMP は properties 辞書に現れないので `strip` が構造的に触れず、
+`Iptc4xmpExt:PersonInImage` が残るのではないか」と挙げた（本人も**未実測**と明記）。
+
+JPEG の SOI 直後に **APP1 の XMP パケットを直接挿入**して実測したところ、
+`Iptc4xmpExt:PersonInImage` も `xmp:CreatorTool` も**出力に残らなかった**。
+JPEG の再書き出しの過程で XMP が落ちるため。指摘は成立しないが、
+将来 `CGImageDestinationCopyImageSource` へ変えたときに壊れうるので
+`XMPStrippingTests` として固定した。
+
+> **ImageIO の API 経由では XMP を埋め込めなかった。**
+> `CGImageDestinationAddImageAndMetadata` に `xmp:CreatorTool` を渡しても保存されず、
+> 読み返すと `exif:ColorSpace` 等しか出ない。**バイト列を直接組む必要がある。**
+
+---
+
 ## D. 検証の状況
 
 ### 自動テスト
 
 ```
 ./scripts/test.sh
-→ 168 tests in 22 suites passed （2026-09-01 実測。所要は 91.5〜94.6 秒で振れる）
+→ 176 tests in 25 suites passed （2026-09-01 実測。所要は 91.5〜95.3 秒で振れる）
 ```
 
-内訳: 単体 138 件 + rcd 統合 30 件（実際に rclone を起動し NFS マウントする）。
-（M-27 で 157 → 161、M-28 で 161 → 168）
+内訳: 単体 146 件 + rcd 統合 30 件（実際に rclone を起動し NFS マウントする）。
+（M-27 で 157 → 161、M-28 で 161 → 168、M-29 で 168 → 176）
 
 設計書の T-Gxx は 39 件あり、うち **30 件を自動または実測で検証**している。
 残る 9 件は実 R2（6 件）・Developer ID（2 件）・Mac 再起動（1 件）を要するもの。
