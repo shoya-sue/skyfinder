@@ -53,6 +53,8 @@
 | 同梱 rclone のライセンス | **MIT の許諾文を `.app` に同梱**（`Contents/Resources/rclone-LICENSE.txt`・1345 バイト / 23 行）。公式配布 zip に LICENSE ファイルは無く、README.txt から抽出している | `fetch-rclone.sh` 実行 → DMG をマウントして `.app` 内を確認 | 2026-09-01 |
 | DMG のビルド | `./scripts/build.sh release dmg` で 37MB の `dist/SkyFolder.dmg` が生成される | 実行して成果物を確認 | 2026-09-01 |
 | **観点を分けた独立レビュー（3 体）を通した** | critical 0 件・**high 7 件**。**7 件すべて修正済み**（M-28）。うち 1 件は SEC-08 の実害（IPTC の `PersonInImage` が公開画像に残っていた） | 3 体とも `REQUEST_CHANGES` を返し、指摘を回収して修正・回帰テストを追加 | 2026-09-01 |
+| **別ベンダーの独立レビューを取得した** | **GitHub Copilot CLI**（`copilot -p`・read-only）で実施し `REQUEST_CHANGES`。high 1 件 — **取り下げた v1.0.0 の DMG が資産として残り、ダウンロード可能だった**。public 化すると SEC-08 の欠陥入りバイナリが世界中から入手可能になる指摘。**資産を削除して対応済み** | 実行ログと、実行前後で作業ツリーが不変であることを確認 | 2026-09-01 |
+| v1.0.0 の無害化 | prerelease へ降格・**配布資産を削除**・ノートを取り下げの記録に差し替え | `gh release view v1.0.0`（assets 0 件） | 2026-09-01 |
 | ライセンス | **MIT License**（`LICENSE`）。同梱 rclone も MIT で、その旨を末尾に明記 | ファイルの存在と README の記述 | 2026-09-01 |
 | 製品サイト | `site/` を Cloudflare Pages（Kojin アカウント・プロジェクト `skyfolder`）へデプロイ。`/` `/robots.txt` `/sitemap.xml` `/llms.txt` `/og.png` がいずれも **200** | `curl` で全エンドポイントを確認 | 2026-09-01 |
 | **Release からダウンロードして動く** | **v1.0.1** を公開。`gh release download` で取得した DMG は **SHA-256 一致**（`33ac4f63…`）、マウントでき、取り出した `.app` の自己診断が **19/20 通過・exit=0**。`rclone-LICENSE.txt` の同梱も確認 | 実際にダウンロードして実行 | 2026-09-01 |
@@ -73,7 +75,6 @@
 | **SEC-G06(a) の解消** | 現状が未達なのは**確定済み**（§2）。**Developer ID 署名で data protection keychain に切り替わるか**が未確認 | 加入後に `--selftest` の SEC-G06 が WARN → PASS になるか（G5-2） | **Apple Developer Program** |
 | **T-G18** | Mac 再起動後にマウントが復活する | 実機で再起動 | **なし**（実行するだけで確かめられる） |
 | **T-G13 / T-G21 の実 R2 版** | 未送信件数の遷移 / 公開画像の Exif 検査 | G1-9 のあと | G1-9 の完了 |
-| **別ベンダーの独立レビュー** | Codex **未インストール**、Grok **402（残高切れ）**。レビュー内容は 1 行も得ていない | `codex exec -s read-only` / `grok -p` | **インストール / 残高**。買えたのは「別コンテキスト」までで、エラーの非相関性は不十分 |
 | **A-01** | アイコン原本が 903px で、必要な 1024px に届かない（現在は 824px に縮小して配置する暫定対応） | `docs/design/icon.jpeg` を差し替えて `./scripts/make-assets.sh` | **1024px 以上の正方形の原本**（人手） |
 | **A-07** | DMG 背景 | — | 未着手。**無くても配布は成立する** |
 | U-06 / U-07 | R2 の料金 / FSEvents | — | 設計に影響しない・G-08 によりブロッカーではない |
@@ -111,7 +112,7 @@
 | 1 | **リポジトリを public にする** | レビューで critical / high が 0 件であることを確認したあと。**public 化は不可逆** |
 | 2 | **カスタムドメイン `skyfolder.fracturelab.dev` を割り当てる** | public 化と**同時**に行う。private のままサイトを検索に載せると、リンク先が 404 のまま SEO される |
 | 3 | **T-G18** — Mac を再起動してマウントが復活するか確かめる | 再起動後に Finder でマウントが見える。結果を §2 か §3 に移す |
-| 4 | **別ベンダーの CLI を用意**して独立レビューを 1 本通す | 出力末尾に `APPROVE` / `REQUEST_CHANGES` がある。**無ければ「結果を得ていない」**。Codex は 2026-09-01 時点で PATH・npm global・brew のいずれにも存在せず、実行できていない |
+| 4 | （完了）別ベンダーの独立レビュー | **GitHub Copilot CLI で取得済み**（§2）。Codex は 2026-09-01 時点で PATH・npm global・brew のいずれにも存在せず実行できなかった。Grok は 402 |
 
 > **完了済み（2026-09-01）**
 > - ~~git init~~ → `9accc11` で初期化・75 ファイル追跡（§2）
