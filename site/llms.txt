@@ -1,0 +1,55 @@
+# SkyFolder
+
+> Cloudflare R2 バケットを macOS の Finder にドライブとしてマウントし、マウント済みのファイルから恒久公開 URL と期限付き共有 URL を発行する macOS ネイティブアプリ。kext もドライバも不要。MIT ライセンスのオープンソース。
+
+SkyFolder は SwiftUI で書かれた macOS 14 以降 / Apple Silicon 向けのアプリです。
+同梱した rclone を HTTP RC API（`rclone rcd`）で制御し、macOS 内蔵の NFS クライアントを使う
+`nfsmount` 方式でマウントします。カーネル拡張（kext）や macFUSE のインストールは要りません。
+認証情報は Keychain に保存し、rclone へは環境変数で注入するため、設定ファイルを一切生成しません。
+
+- 公式サイト: https://skyfolder.fracturelab.dev/
+- ソースコード: https://github.com/shoya-sue/skyfinder
+- 最新リリース: https://github.com/shoya-sue/skyfinder/releases/latest
+- ライセンス: MIT License（同梱している rclone も MIT License）
+
+## 主な機能
+
+- Cloudflare R2 バケットを Finder のドライブとしてマウントする
+- マウント済みのファイルから恒久公開 URL を発行する（カスタムドメイン経由）
+- 最大 7 日の期限付き共有 URL（presigned URL）を発行する
+- 公開する画像から GPS・Exif・IPTC・PNG テキストチャンクの識別情報を除去する
+- クラウドへ未送信のファイル数をメニューバーに表示する
+- 公開物の一覧表示と取り下げ
+
+## 設計上の特徴
+
+- private バケットと public バケットを物理的に分離する
+- public バケットは read-only でマウントする。Finder から直接置いてメタデータ除去を迂回することが構造的にできない
+- 画像メタデータの除去を無効にする設定は存在しない（永続的なオプトアウトを許さない）
+- rclone のプロセスは常に 1 本に保つ（PID ファイル・孤児プロセスの回収・単一インスタンス化）
+
+## 利用上の制約（正確に把握しておくべきこと）
+
+- 公開バケットは秘匿性がない。オブジェクトキーを知っていれば誰でも読める
+- 取り下げは削除ではなく `gone/` プレフィックスへの移動である
+- 期限付き共有 URL は発行後に取り消せない。presigned URL の署名はローカル計算で完結し、サーバに状態を持たないため
+- ファイルの保存はクラウドへの即時同期ではない。VFS の write-back により反映まで 30 秒程度かかる
+- 単一利用者・単一 Mac が前提。localhost の NFS は認証なしで待ち受けるため、共有 Mac では使用しない
+- public バケットは OS レベルでは read-only ボリュームにならない。Finder は書き込めると認識してドラッグを許可し、そのあと失敗する
+- App Sandbox を無効にしているため、Mac App Store では配布できない
+
+## 現時点で未達の項目
+
+- Apple の公証（notarization）を受けていない。初回起動時にシステム設定から手動で許可する操作が要る
+- 画面ロック中の認証情報保護（data protection keychain）は未達。ad-hoc 署名では Team ID が無く、legacy keychain へフォールバックしている
+- 実 R2 アカウントでの通し確認（SigV4 の成立・presigned の実失効・Cache-Control の実付与）は未実施
+
+## 動作環境
+
+macOS 14 以降 / Apple Silicon / Cloudflare R2 アカウント
+
+## 資料
+
+- [STATUS.md](https://github.com/shoya-sue/skyfinder/blob/main/docs/STATUS.md): 確定事項と未確定を分けた台帳
+- [IMPLEMENTATION-NOTES.md](https://github.com/shoya-sue/skyfinder/blob/main/docs/IMPLEMENTATION-NOTES.md): 設計書どおりに実装すると壊れる箇所の実測記録
+- [BUNDLED.md](https://github.com/shoya-sue/skyfinder/blob/main/docs/BUNDLED.md): 同梱している rclone のバージョン・ハッシュ・ライセンス

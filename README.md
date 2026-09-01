@@ -20,6 +20,10 @@ Cloudflare R2 を macOS Finder にマウントし、URL ベースで共有する
 | 認証情報 | Keychain に保存し、rcd へは環境変数で注入。**設定ファイルを一切生成しない** |
 | 配布 | Developer ID 署名 + notarization の `.app`。App Sandbox は無効なので **MAS 配布は構造的に不可能** |
 
+## サイト
+
+**<https://skyfolder.fracturelab.dev/>** — 機能・しくみ・制約・FAQ をまとめてあります。
+
 ## インストール（Release からダウンロードする場合）
 
 1. [Releases](https://github.com/shoya-sue/skyfinder/releases) から `SkyFolder.dmg` をダウンロード
@@ -136,4 +140,4 @@ docs/                        設計資料。着手前に docs/README.md を読�
 |---|---|
 | [rclone](https://rclone.org/) v1.75.0 | **MIT License** — Copyright (C) 2019 by Nick Craig-Wood。許諾文は `.app` 内の `Contents/Resources/rclone-LICENSE.txt` に同梱しています（`scripts/fetch-rclone.sh` が公式配布物から取り出します） |
 
-SkyFolder 本体のライセンスは未設定です（現状は権利留保）。
+SkyFolder 本体は **[MIT License](LICENSE)** です。利用・改変・再配布は自由で、著作権表示と許諾文を残すことだけが条件です。

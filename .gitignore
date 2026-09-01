@@ -28,3 +28,6 @@ ab/
 
 # writgate の依頼ごとの契約（セッション固有）
 .writgate/
+
+# Cloudflare Pages のローカルキャッシュ（site/ の中身だけが正）
+.wrangler/

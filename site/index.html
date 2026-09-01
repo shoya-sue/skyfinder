@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SkyFolder — Cloudflare R2 を macOS Finder にマウントして URL で共有する</title>
+<meta name="description" content="Cloudflare R2 バケットを macOS の Finder にドライブとしてマウントし、ファイルから恒久公開 URL と期限付き共有 URL をワンクリックで発行する macOS ネイティブアプリ。kext もドライバも不要、ターミナル操作も不要。公開画像の Exif は自動で除去します。MIT ライセンスのオープンソース。">
+<link rel="canonical" href="https://skyfolder.fracturelab.dev/">
+<meta name="color-scheme" content="light dark">
+
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://skyfolder.fracturelab.dev/">
+<meta property="og:title" content="SkyFolder — Cloudflare R2 を macOS Finder にマウントして URL で共有する">
+<meta property="og:description" content="R2 バケットが Finder のドライブになり、ファイルから公開 URL・期限付き URL をワンクリックで発行。kext 不要・ターミナル不要。公開画像の Exif は自動除去。MIT ライセンス。">
+<meta property="og:image" content="https://skyfolder.fracturelab.dev/og.png">
+<meta property="og:site_name" content="SkyFolder">
+<meta property="og:locale" content="ja_JP">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="SkyFolder — Cloudflare R2 を macOS Finder にマウント">
+<meta name="twitter:description" content="R2 が Finder のドライブになり、公開 URL・期限付き URL をワンクリックで発行。kext 不要・ターミナル不要。MIT ライセンス。">
+<meta name="twitter:image" content="https://skyfolder.fracturelab.dev/og.png">
+
+<link rel="icon" href="/favicon.png" type="image/png">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "SoftwareApplication",
+      "@id": "https://skyfolder.fracturelab.dev/#app",
+      "name": "SkyFolder",
+      "applicationCategory": "UtilitiesApplication",
+      "applicationSubCategory": "Cloud storage client",
+      "operatingSystem": "macOS 14.0 or later, Apple Silicon",
+      "softwareVersion": "1.0.1",
+      "url": "https://skyfolder.fracturelab.dev/",
+      "downloadUrl": "https://github.com/shoya-sue/skyfinder/releases/latest",
+      "license": "https://opensource.org/licenses/MIT",
+      "isAccessibleForFree": true,
+      "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+      "description": "Cloudflare R2 バケットを macOS の Finder にドライブとしてマウントし、マウント済みのファイルから恒久公開 URL と期限付き共有 URL を発行する macOS ネイティブアプリ。同梱した rclone を NFS マウントで制御するため、kext もドライバも要りません。",
+      "featureList": [
+        "Cloudflare R2 バケットを Finder のドライブとしてマウント",
+        "恒久公開 URL の発行",
+        "最大 7 日の期限付き共有 URL（presigned URL）の発行",
+        "公開画像からの Exif・GPS メタデータの自動除去",
+        "公開バケットの read-only マウント",
+        "未送信ファイル数の可視化",
+        "認証情報の Keychain 保存"
+      ],
+      "softwareRequirements": "macOS 14 以降 / Apple Silicon / Cloudflare R2 アカウント"
+    },
+    {
+      "@type": "FAQPage",
+      "@id": "https://skyfolder.fracturelab.dev/#faq",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "SkyFolder に macFUSE や kext は必要ですか？",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "要りません。macOS 内蔵の NFS クライアントを使う rclone の nfsmount 方式でマウントするため、カーネル拡張もドライバもインストールしません。"
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "ターミナル操作は必要ですか？",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "アプリの利用にターミナルは要りません。接続情報を画面に入力するだけでマウントと共有ができます。ただし現在の配布物は Apple の公証を受けていないため、初回起動時だけシステム設定から手動で許可する操作が要ります。"
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "公開した画像から位置情報は消えますか？",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "消えます。公開時に GPS・Exif・IPTC・PNG テキストチャンクなどの識別情報を除去します。除去を無効にする設定は存在しません。公開バケットは read-only でマウントされるため、Finder から直接置いて除去を迂回することもできません。"
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "期限付き共有リンクは後から取り消せますか？",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "取り消せません。presigned URL の署名はローカル計算で完結し、サーバに状態を持たないためです。期限は最大 7 日で、発行後は期限切れを待つ以外に無効化する手段がありません。"
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "保存したファイルはすぐクラウドに反映されますか？",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "すぐではありません。VFS の write-back により反映は 30 秒程度かかります。アプリはこの間を「未送信 N 件」として表示します。"
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "ライセンスは何ですか？",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "MIT License です。利用・改変・再配布は自由で、著作権表示と許諾文を残すことだけが条件です。同梱している rclone も MIT License です。"
+          }
+        }
+      ]
+    }
+  ]
+}
+</script>
+
+<style>
+:root{
+  --brand:#5DA7E4; --warn:#E8710A;
+  --bg:#ffffff; --fg:#1c1f23; --muted:#5b6570; --line:#e3e7ec; --card:#f7f9fb; --code:#eef2f6;
+}
+@media (prefers-color-scheme:dark){
+  :root{ --bg:#14171a; --fg:#e8ebee; --muted:#9aa5b1; --line:#2a3037; --card:#1b1f24; --code:#20262d; }
+}
+*{box-sizing:border-box}
+body{
+  margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.75 -apple-system,BlinkMacSystemFont,"Hiragino Sans","Noto Sans JP",sans-serif;
+}
+.wrap{max-width:760px;margin:0 auto;padding:0 20px}
+a{color:var(--brand)}
+header{padding:64px 0 40px;border-bottom:1px solid var(--line)}
+h1{font-size:2.25rem;line-height:1.3;margin:0 0 8px}
+.tag{color:var(--muted);font-size:1.05rem;margin:0 0 28px}
+.lede{font-size:1.1rem;margin:0 0 28px}
+.cta{display:inline-block;background:var(--brand);color:#fff;text-decoration:none;
+  padding:12px 24px;border-radius:8px;font-weight:600}
+.cta.sub{background:transparent;color:var(--brand);border:1px solid var(--brand);margin-left:8px}
+h2{font-size:1.5rem;margin:48px 0 12px;padding-top:8px}
+h3{font-size:1.12rem;margin:28px 0 8px}
+section{border-bottom:1px solid var(--line);padding-bottom:32px}
+section:last-of-type{border-bottom:none}
+ul{padding-left:1.25em}
+li{margin:6px 0}
+code{background:var(--code);padding:2px 6px;border-radius:4px;font-size:.9em}
+pre{background:var(--code);padding:14px 16px;border-radius:8px;overflow-x:auto}
+pre code{background:none;padding:0}
+table{border-collapse:collapse;width:100%;margin:16px 0;font-size:.95rem;display:block;overflow-x:auto}
+th,td{border:1px solid var(--line);padding:9px 12px;text-align:left;vertical-align:top}
+th{background:var(--card);font-weight:600;white-space:nowrap}
+.note{background:var(--card);border-left:3px solid var(--brand);padding:14px 18px;border-radius:0 6px 6px 0;margin:18px 0}
+.note.warn{border-left-color:var(--warn)}
+.note p{margin:6px 0}
+footer{padding:36px 0 64px;color:var(--muted);font-size:.9rem}
+ol{padding-left:1.3em}
+ol li{margin:8px 0}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+<header>
+  <h1>SkyFolder</h1>
+  <p class="tag">Cloudflare R2 を macOS Finder にマウントし、URL で共有する</p>
+  <p class="lede">
+    接続情報をアプリ画面に入力するだけで、任意の R2 バケットが <strong>Finder のドライブ</strong>になります。
+    マウント済みのファイルから<strong>恒久公開 URL</strong> と<strong>期限付き共有 URL</strong> をワンクリックで発行できます。
+    <strong>kext もドライバも要りません。</strong>
+  </p>
+  <p>
+    <a class="cta" href="https://github.com/shoya-sue/skyfinder/releases/latest">ダウンロード（無料・MIT）</a>
+    <a class="cta sub" href="https://github.com/shoya-sue/skyfinder">ソースコード</a>
+  </p>
+</header>
+
+<section>
+  <h2>何ができるか</h2>
+  <ul>
+    <li><strong>R2 バケットが Finder のドライブになる</strong> — 通常のフォルダと同じように開いて、読み書きできます</li>
+    <li><strong>恒久公開 URL を発行できる</strong> — 公開バケットへアップロードし、カスタムドメインの URL をクリップボードにコピーします</li>
+    <li><strong>期限付き共有 URL を発行できる</strong> — 最大 7 日の presigned URL。一時的に渡したいファイル向けです</li>
+    <li><strong>公開画像の Exif が自動で消える</strong> — GPS・撮影機材・IPTC・PNG のテキストチャンクを除去してから公開します</li>
+    <li><strong>未送信の件数が見える</strong> — クラウドへの反映は即時ではないので、残っている件数をメニューバーに表示します</li>
+    <li><strong>公開物の一覧と取り下げ</strong> — 何を公開したかを一覧でき、取り下げもできます</li>
+  </ul>
+</section>
+
+<section>
+  <h2>しくみ</h2>
+  <table>
+    <tr><th>UI</th><td>SwiftUI ネイティブ（メニューバー常駐 + ウィンドウ）</td></tr>
+    <tr><th>マウント</th><td><code>rclone nfsmount</code>。macOS 内蔵の NFS クライアントを使うため、<strong>カーネル拡張もドライバも不要</strong></td></tr>
+    <tr><th>バックエンド</th><td>同梱した <code>rclone rcd</code> を HTTP RC API で制御。プロセスは常に 1 本に保ちます</td></tr>
+    <tr><th>認証情報</th><td>Keychain に保存し、rclone へは環境変数で注入。<strong>設定ファイルを一切生成しません</strong></td></tr>
+    <tr><th>対応環境</th><td>macOS 14 以降 / Apple Silicon</td></tr>
+    <tr><th>ライセンス</th><td>MIT License（同梱の rclone も MIT）</td></tr>
+  </table>
+  <p>
+    バケットは <strong>private と public を物理的に分離</strong>します。
+    公開バケットは <strong>read-only でマウント</strong>されるため、Finder から直接ファイルを置いて
+    Exif 除去を迂回することが構造的にできません。公開は必ずアプリの共有ダイアログを通ります。
+  </p>
+</section>
+
+<section>
+  <h2>インストール</h2>
+  <ol>
+    <li><a href="https://github.com/shoya-sue/skyfinder/releases/latest">Releases</a> から <code>SkyFolder.dmg</code> をダウンロード</li>
+    <li>DMG を開き、<code>SkyFolder.app</code> を <code>Applications</code> へドラッグ</li>
+    <li>初回だけ、下の手順で macOS の警告を越えます</li>
+    <li>起動するとオンボーディングが開くので、R2 の接続情報を入力します</li>
+  </ol>
+
+  <div class="note warn">
+    <p><strong>初回起動時の警告について</strong></p>
+    <p>
+      現在の配布物は ad-hoc 署名で、<strong>Apple の公証（notarization）を受けていません</strong>。
+      そのため Gatekeeper がこのアプリを拒否し、ダウンロード直後はダブルクリックで開きません。
+    </p>
+    <p>開くには次の手順を踏みます。</p>
+    <ol>
+      <li><code>Applications</code> の <code>SkyFolder.app</code> をダブルクリック →「開発元を確認できません」→ <strong>そのまま閉じる</strong></li>
+      <li><strong>システム設定 → プライバシーとセキュリティ</strong> を開く</li>
+      <li>下の方に出る「"SkyFolder" は開発元を確認できないため、使用がブロックされました」の横の <strong>「このまま開く」</strong></li>
+      <li>確認ダイアログで <strong>「開く」</strong></li>
+    </ol>
+    <p>
+      一度許可すれば以降は普通に起動します。
+      バンドル自体は壊れていません（<code>codesign -v --deep --strict</code> は通ります）。
+      拒否されるのは Developer ID 証明書と公証チケットが無いことだけが理由です。
+    </p>
+  </div>
+</section>
+
+<section>
+  <h2>知っておくべきこと</h2>
+  <p>隠さずに書きます。使う前に把握しておいてください。</p>
+  <ul>
+    <li><strong>公開バケットは秘匿性ゼロです。</strong> key を知れば誰でも読めます。取り下げは削除ではなく <code>gone/</code> への移動です</li>
+    <li><strong>期限付きリンクは発行後に取り消せません。</strong> 署名はローカル計算で完結し、サーバに状態を持たないためです</li>
+    <li><strong>保存 ≠ 即クラウド同期です。</strong> 反映は 30 秒程度かかります。アプリは「未送信 N 件」として表示します</li>
+    <li><strong>単一利用者・単一 Mac が前提です。</strong> localhost の NFS は認証なしで待ち受けるため、共有 Mac では使わないでください</li>
+    <li><strong>公開バケットは OS レベルでは read-only ボリュームになりません。</strong> Finder は書けると認識してドラッグを許可し、そのあと失敗します。異常ではありません</li>
+    <li><strong>App Store では配布できません。</strong> 子プロセス実行と任意パスへのマウントのため App Sandbox を無効にしており、構造的に不可能です</li>
+  </ul>
+  <div class="note">
+    <p><strong>現在の未検証事項</strong></p>
+    <p>
+      実 R2 アカウントでの通し確認（SigV4 の成立・presigned の実失効・Cache-Control の実付与）は
+      <strong>まだ実施していません</strong>。検証スクリプトは同梱してあります。
+      また Apple Developer Program に未加入のため、公証と、画面ロック中の認証情報保護
+      （data protection keychain）も未達です。
+      詳細は <a href="https://github.com/shoya-sue/skyfinder/blob/main/docs/STATUS.md">STATUS.md</a> に確定事項と未確定を分けて置いてあります。
+    </p>
+  </div>
+</section>
+
+<section id="faq">
+  <h2>よくある質問</h2>
+
+  <h3>macFUSE や kext は必要ですか？</h3>
+  <p>要りません。macOS 内蔵の NFS クライアントを使う <code>nfsmount</code> 方式なので、カーネル拡張もドライバもインストールしません。</p>
+
+  <h3>ターミナル操作は必要ですか？</h3>
+  <p>アプリの利用には要りません。ただし公証が無いため、<strong>初回起動時だけ</strong>システム設定から手動で許可する操作が要ります（ターミナルは使いません）。</p>
+
+  <h3>公開した画像から位置情報は消えますか？</h3>
+  <p>消えます。GPS・Exif・IPTC・PNG のテキストチャンクなどの識別情報を、公開前に除去します。<strong>除去を無効にする設定は存在しません。</strong></p>
+
+  <h3>期限付き共有リンクは後から取り消せますか？</h3>
+  <p>取り消せません。presigned URL はサーバに状態を持たないためです。期限は最大 7 日です。</p>
+
+  <h3>保存したファイルはすぐ反映されますか？</h3>
+  <p>すぐではありません。VFS の write-back により 30 秒程度かかります。その間は「未送信 N 件」として表示されます。</p>
+
+  <h3>ライセンスは何ですか？</h3>
+  <p>MIT License です。利用・改変・再配布は自由で、著作権表示と許諾文を残すことだけが条件です。同梱している rclone も MIT License です。</p>
+
+  <h3>R2 バケットはアプリが作ってくれますか？</h3>
+  <p>作りません。既存のバケットへ接続するだけです。バケットの作成・API トークンの発行・カスタムドメインの接続は、Cloudflare のダッシュボードで先に済ませてください。</p>
+</section>
+
+<section>
+  <h2>ソースと資料</h2>
+  <ul>
+    <li><a href="https://github.com/shoya-sue/skyfinder">GitHub リポジトリ</a> — MIT License</li>
+    <li><a href="https://github.com/shoya-sue/skyfinder/releases/latest">最新リリース</a> — DMG のダウンロード</li>
+    <li><a href="https://github.com/shoya-sue/skyfinder/blob/main/docs/STATUS.md">STATUS.md</a> — 確定事項と未確定の台帳</li>
+    <li><a href="https://github.com/shoya-sue/skyfinder/blob/main/docs/IMPLEMENTATION-NOTES.md">IMPLEMENTATION-NOTES.md</a> — 設計どおりに実装すると壊れる箇所の記録</li>
+  </ul>
+</section>
+
+<footer>
+  <p>SkyFolder — MIT License · <a href="https://fracturelab.dev">fracturelab.dev</a></p>
+  <p>Cloudflare および R2 は Cloudflare, Inc. の商標です。本プロジェクトは Cloudflare, Inc. とは無関係です。</p>
+</footer>
+
+</div>
+</body>
+</html>
