@@ -34,7 +34,11 @@ struct RootView: View {
         .task { await model.start() }
         // §5.3 (b) / §5.5: メニューバーからの画面要求を受け取る。
         // メニューバーは別シーンなので、この `@State` を直接は立てられない。
-        .onChange(of: model.sheetRequest) { _, request in
+        // **`initial: true` が要る。** メニューバー常駐アプリはウィンドウを閉じた状態が通常で、
+        // 「共有…」を押すと `openWindow` で RootView が**新規生成**される。
+        // そのとき `sheetRequest` は「最初からある値」なので、initial なしでは onChange が発火せず
+        // シートが開かない — §5.3 (b) の経路が、いちばん普通の使い方で成立しなくなる。
+        .onChange(of: model.sheetRequest, initial: true) { _, request in
             guard let request else { return }
             switch request {
             case .share:
@@ -59,8 +63,12 @@ struct RootView: View {
         .sheet(isPresented: $showDiagnostics) {
             DiagnosticsView().environmentObject(model)
         }
+        // 閉じられたときは **`cancelTermination()` を通す**。
+        // 値だけ nil に戻すと `isTerminating` が true のまま残り、
+        // `beginTermination` の guard に弾かれて**以後の Cmd+Q が全部無視される**。
+        // ボタンで進んだ場合は先に値が nil になっているので、ここは Esc 等の dismiss だけが通る。
         .sheet(item: Binding(get: { model.pendingUploadsAtTermination.map { PendingCount(value: $0) } },
-                             set: { if $0 == nil { model.pendingUploadsAtTermination = nil } })) { pending in
+                             set: { if $0 == nil { model.cancelTermination() } })) { pending in
             TerminationGuardView(pending: pending.value)
                 .environmentObject(model)
         }

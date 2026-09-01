@@ -166,50 +166,49 @@ struct LifecyclePolicyTests {
 @Suite("§8.2 ネットワーク断の判定")
 struct OfflineDecisionTests {
 
-    /// 比較対象が無い最初のサンプルで断にしてはいけない
-    /// （起動直後に errors が非ゼロでも、それは「増えた」ことを意味しない）。
-    @Test("初回は判定しない")
-    func firstSampleIsNeverOffline() {
-        let decision = LifecyclePolicy.offlineDecision(
-            previousErrors: nil, currentErrors: 100, consecutiveIncreases: 0)
-        #expect(!decision.isOffline)
-        #expect(decision.streak == 0)
+    private let now = Date(timeIntervalSince1970: 1_000_000)
+    private func ago(_ seconds: TimeInterval) -> Date { now.addingTimeInterval(-seconds) }
+
+    @Test("増加が無ければ断ではない")
+    func noIncreaseIsNotOffline() {
+        #expect(!LifecyclePolicy.isOffline(recentIncreases: [], now: now))
     }
 
-    /// **1 回の増加で断にしてはいけない。** 転送 1 件の失敗でも errors は増えるので、
-    /// 1 回で断にするとオフラインバッジが点滅する。
-    @Test("1 回の増加では断にしない")
+    /// 単発の転送失敗でも errors は増える。1 回で断にするとバッジが点滅する。
+    @Test("窓の中に 1 回だけなら断にしない")
     func singleIncreaseIsNotOffline() {
-        let decision = LifecyclePolicy.offlineDecision(
-            previousErrors: 1, currentErrors: 2, consecutiveIncreases: 0)
-        #expect(!decision.isOffline)
-        #expect(decision.streak == 1)
+        #expect(!LifecyclePolicy.isOffline(recentIncreases: [ago(5)], now: now))
     }
 
-    @Test("2 回続けて増えたら断とみなす")
-    func twoConsecutiveIncreasesMeanOffline() {
-        let decision = LifecyclePolicy.offlineDecision(
-            previousErrors: 2, currentErrors: 3, consecutiveIncreases: 1)
-        #expect(decision.isOffline)
-        #expect(decision.streak == 2)
+    /// **「連続する 2 回のポーリング」ではなく「窓の中に 2 回」で判定する。**
+    /// 前景・転送中の core/stats は 1 秒間隔だが、rclone のリトライはバックオフを挟むので
+    /// 増加は数秒〜数十秒おき。連続を求めると実際の断でも検知できない。
+    @Test("窓の中に 2 回あれば、間隔が空いていても断とみなす")
+    func twoIncreasesWithinWindowMeanOffline() {
+        #expect(LifecyclePolicy.isOffline(recentIncreases: [ago(25), ago(3)], now: now),
+                "22 秒空いていても、窓の中に 2 回あれば断")
     }
 
-    /// 増加が止まったら連続回数を **0 に戻す**。戻さないと、一度断になった後は
-    /// 何をしても復帰しなくなり、復帰時の `vfs/refresh` が永久に発火しない。
-    @Test("増加が止まったら復帰し、連続回数は 0 に戻る")
-    func noIncreaseResetsStreak() {
-        let decision = LifecyclePolicy.offlineDecision(
-            previousErrors: 5, currentErrors: 5, consecutiveIncreases: 4)
-        #expect(!decision.isOffline)
-        #expect(decision.streak == 0)
+    /// 解除は窓が空くまで待つ。1 回静かなだけで戻すと、断の最中に「復帰」と誤認して
+    /// vfs/refresh を撃ち、断→解除→refresh→増加→断 のフラップになる。
+    @Test("窓の外へ出た増加は数えない（解除にヒステリシスが効く）")
+    func increasesOutsideWindowAreIgnored() {
+        #expect(!LifecyclePolicy.isOffline(recentIncreases: [ago(120), ago(90)], now: now),
+                "どちらも 30 秒の窓の外なので解除されていること")
     }
 
-    /// rcd を作り直すと errors はゼロに戻る。**減少を「増加」と誤解しない**こと。
-    @Test("errors が減ったら復帰扱い（rcd 再起動でカウンタが戻る）")
-    func decreaseIsTreatedAsRecovery() {
-        let decision = LifecyclePolicy.offlineDecision(
-            previousErrors: 10, currentErrors: 0, consecutiveIncreases: 3)
-        #expect(!decision.isOffline)
-        #expect(decision.streak == 0)
+    @Test("窓の内と外が混ざる場合、内側だけを数える")
+    func onlyIncreasesInsideWindowCount() {
+        #expect(!LifecyclePolicy.isOffline(recentIncreases: [ago(100), ago(2)], now: now),
+                "窓の中は 1 回だけなので断にしない")
+        #expect(LifecyclePolicy.isOffline(recentIncreases: [ago(100), ago(20), ago(2)], now: now),
+                "窓の中が 2 回になれば断")
+    }
+
+    @Test("窓と必要回数は呼び出し側で変えられる")
+    func windowAndThresholdAreConfigurable() {
+        #expect(LifecyclePolicy.isOffline(recentIncreases: [ago(5)], now: now, requiredIncreases: 1))
+        #expect(!LifecyclePolicy.isOffline(recentIncreases: [ago(25), ago(3)], now: now, window: 10),
+                "窓を 10 秒にすると ago(25) は外れて 1 回になる")
     }
 }

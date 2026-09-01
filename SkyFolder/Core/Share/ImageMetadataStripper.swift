@@ -26,7 +26,12 @@ public enum ImageMetadataError: Error, LocalizedError, Sendable {
 public struct ImageMetadataStripper: Sendable {
 
     /// 対象拡張子（大小文字不問）。対象外は無加工でアップロードする。
-    public static let targetExtensions: Set<String> = ["jpg", "jpeg", "png", "tiff", "tif", "heic", "webp"]
+    /// **ImageIO で再書き出しできる形式だけを挙げる。**
+    /// `webp` は読めるが `CGImageDestination` が書けないため、ここに入れると
+    /// `strip` が必ず `unsupportedFormat` を投げ、**WebP の恒久公開が常に失敗する**（実測）。
+    /// 外した結果どうなるかは下の `carriesMetadata` を参照
+    /// — メタデータを持つなら公開は中止され、持たないならそのまま公開される。
+    public static let targetExtensions: Set<String> = ["jpg", "jpeg", "png", "tiff", "tif", "heic"]
 
     public static func isTargetFile(_ url: URL) -> Bool {
         targetExtensions.contains(url.pathExtension.lowercased())
@@ -134,15 +139,19 @@ public struct ImageMetadataStripper: Sendable {
             properties[dictionaryKey] = result
         }
 
-        // 辞書ごと落としてよいもの（中身を残す必要がない）
-        for key in [kCGImagePropertyGPSDictionary,
-                    kCGImagePropertyExifDictionary,
-                    kCGImagePropertyExifAuxDictionary] where original[key] != nil {
-            properties[key] = kCFNull
-        }
-        // MakerNote は**メーカーごとに別の辞書**として、しかも {Exif} の子ではなく
-        // トップレベルに出る。Exif 辞書を kCFNull にしても消えないので個別に潰す。
-        for key in Self.makerNoteKeys where original[key] != nil {
+        // **トップレベルの辞書を総なめする。**
+        //
+        // 「消す辞書の一覧」で書くと、一覧に無い辞書 — Photoshop 由来の `{8BIM}` や、
+        // 将来 ImageIO が見せるようになる未知の辞書 — は `properties` に載らず、
+        // `AddImageFromSource` のマージで**元の値が丸ごと出力へ引き継がれる**。
+        // キーレベルで直した穴（`PersonInImage`）と同じ機構が、1 段上に残ることになる。
+        //
+        // GPS / Exif / ExifAux / MakerNote 各種もここで落ちる（個別列挙は不要になった）。
+        // 中身を選んで残す必要がある辞書だけ、下で `nullifyAll` に回す。
+        for (key, value) in original where value is [CFString: Any] {
+            let name = key as String
+            if Self.dictionariesKeptSelectively.contains(name) { continue }
+            if Self.structuralTopLevelDictionaries.contains(name) { continue }
             properties[key] = kCFNull
         }
 
@@ -218,6 +227,19 @@ public struct ImageMetadataStripper: Sendable {
         kCGImagePropertyExifColorSpace as String,
         kCGImagePropertyExifPixelXDimension as String,
         kCGImagePropertyExifPixelYDimension as String,
+    ]
+
+    /// 中身を選んで残す辞書。上の総なめでは触らず、下の `nullifyAll` が個別に扱う。
+    private static let dictionariesKeptSelectively: Set<String> = [
+        kCGImagePropertyPNGDictionary as String,
+        kCGImagePropertyIPTCDictionary as String,
+        kCGImagePropertyTIFFDictionary as String,
+    ]
+
+    /// 画像の構造に要るトップレベル辞書。**これ以外の辞書は中身を見ずに落とす。**
+    /// JFIF は JPEG の基本情報（密度・単位）で、識別情報を含まない。
+    private static let structuralTopLevelDictionaries: Set<String> = [
+        kCGImagePropertyJFIFDictionary as String,
     ]
 
     // MARK: - 残してよいキー（これ以外は全部潰す）

@@ -56,6 +56,9 @@ struct SkyFolderApp: App {
             RootView()
                 .environmentObject(model)
                 .frame(minWidth: 720, minHeight: 480)
+                // 配線は MenuBarExtra 側で必ず通るが、ウィンドウから起動した場合の保険。
+                // 冪等なので二重に通っても問題ない。
+                .onAppear { appDelegate.model = model }
         }
         .defaultSize(width: 820, height: 620)
         .commands {
@@ -67,7 +70,8 @@ struct SkyFolderApp: App {
             MenuBarContentView()
                 .environmentObject(model)
         } label: {
-            MenuBarLabel(state: model.menuBarState)
+            MenuBarLabelHost { appDelegate.model = model }
+                .environmentObject(model)
         }
 
         Settings {
@@ -87,5 +91,39 @@ private final class OutputBox: @unchecked Sendable {
     }
     var value: (report: String, allPassed: Bool) {
         lock.lock(); defer { lock.unlock() }; return stored
+    }
+}
+
+/// メニューバーの label を包み、**常駐 UI でしか確実にできない 2 つのこと**を引き受ける。
+///
+/// 1. **`AppDelegate` への `AppModel` の配線**
+///
+///    `AppDelegate` は `applicationShouldTerminate` / `willPowerOff` / `didBecomeActive` の
+///    各ハンドラで `guard let model else { return }` を通る。配線されていないと
+///    **それらが全部無言で素通りし**、終了時の未送信ガードも `unmountAll` も
+///    `supervisor.stop()` も R-G10 の記録も走らない — 通常終了のたびに rcd が孤児化する
+///    （M-25 / CRIT-03）。実際にその状態だった（M-30）。
+///
+/// 2. **終了ガードのダイアログの提示先を確保する**
+///
+///    `TerminationGuardView` は `RootView` の `.sheet` でしか出ない。
+///    ウィンドウを閉じたまま終了しようとすると提示先が無く、
+///    `.terminateLater` への reply が永遠に来ずアプリが固まる。
+///    ユーザーは強制終了するしかなく、そこで rcd が孤児化して R-G10 の記録も残らない。
+///
+/// **メニューバーの label に置く理由**: 常駐 UI なので起動直後に必ず評価され、
+/// ウィンドウが閉じていても生きている。`Window` の `onAppear` はウィンドウを開かないと
+/// 呼ばれず、このアプリはウィンドウを閉じたまま常駐するのが通常の使い方。
+private struct MenuBarLabelHost: View {
+    @EnvironmentObject private var model: AppModel
+    @Environment(\.openWindow) private var openWindow
+    let wireUp: () -> Void
+
+    var body: some View {
+        MenuBarLabel(state: model.menuBarState)
+            .onAppear(perform: wireUp)
+            .onChange(of: model.pendingUploadsAtTermination) { _, pending in
+                if pending != nil { openWindow(id: "main") }
+            }
     }
 }

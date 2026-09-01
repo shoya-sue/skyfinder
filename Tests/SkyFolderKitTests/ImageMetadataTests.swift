@@ -13,10 +13,19 @@ struct ImageMetadataStripperTests {
     // MARK: - 対象判定
 
     @Test("対象拡張子は大小文字を問わない", arguments: [
-        "a.jpg", "a.JPEG", "a.PNG", "a.tiff", "a.HEIC", "a.webp",
+        "a.jpg", "a.JPEG", "a.PNG", "a.tiff", "a.HEIC", "a.tif",
     ])
     func targetsImageExtensions(name: String) {
         #expect(ImageMetadataStripper.isTargetFile(URL(fileURLWithPath: "/tmp/\(name)")))
+    }
+
+    /// **webp は ImageIO が読めるが書けない。**
+    /// 対象に入れると `strip` が必ず `unsupportedFormat` を投げ、
+    /// WebP の恒久公開が常に失敗する（実測）。対象外にしたうえで、
+    /// メタデータを持つ webp は `carriesMetadata` の fail-closed が公開を止める。
+    @Test("webp は再書き出しできないので対象外")
+    func webpIsNotATarget() {
+        #expect(!ImageMetadataStripper.isTargetFile(URL(fileURLWithPath: "/tmp/a.webp")))
     }
 
     @Test("対象外の拡張子は無加工", arguments: ["a.pdf", "a.txt", "a.mp4", "a"])

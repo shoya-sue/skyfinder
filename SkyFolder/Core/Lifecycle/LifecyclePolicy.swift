@@ -57,20 +57,32 @@ public enum LifecyclePolicy {
 
     // MARK: - §8.2 ネットワーク断
 
-    /// `core/stats` の errors から断を判定する。
+    /// `core/stats` の errors から断を判定する（§8.2）。
     ///
-    /// errors は**累積カウンタ**なので、値そのものではなく**増えたかどうか**を見る。
-    /// 1 回の増加は単発の転送失敗でも起きるため、**2 回続けて増えたとき**に断とみなす
-    /// — ここを 1 回にすると、失敗 1 件でオフラインバッジが点滅する。
+    /// **この信号だけでは「回復した」と「リトライがバックオフに入った」を区別できない。**
+    /// errors は累積カウンタで、増分が止まった理由が回線復帰なのか、rclone が再試行を
+    /// 間引いたのか、そもそも転送が無いのかを、値からは判別できない。そこが分かっていない境界で、
+    /// 確実にするには実際の疎通確認（軽い RC 呼び出し）が要る。
     ///
-    /// 断と判定してもマウントは**外さない**（§8.2）。維持したままバッジで示し、
-    /// 復帰時に `vfs/refresh` を 1 回実行する。
-    public static func offlineDecision(previousErrors: Int?, currentErrors: Int,
-                                       consecutiveIncreases: Int) -> (isOffline: Bool, streak: Int) {
-        guard let previous = previousErrors else { return (false, 0) }
-        let streak = currentErrors > previous ? consecutiveIncreases + 1 : 0
-        return (streak >= 2, streak)
+    /// そのうえで、**サンプリング間隔への依存だけは外す**:
+    ///
+    /// - **検知**: 直近 `window` 秒に `requiredIncreases` 回以上の増加があったか。
+    ///   「連続する 2 回のポーリングで増加」を要求してはいけない — 前景・転送中の
+    ///   `core/stats` は 1 秒間隔だが、rclone のリトライはバックオフを挟むので
+    ///   増加は数秒〜数十秒おきになる。連続を求めると**実際に断でも検知できない**（偽陰性）
+    /// - **解除**: 窓の中の増加が 0 になって初めて解除する。増えなかった 1 回で戻すと、
+    ///   **断が続いている最中に「復帰」と誤認**して `vfs/refresh` を撃ち、
+    ///   断→解除→refresh→増加→断 のフラップになる
+    ///
+    /// - Parameter recentIncreases: errors が増えた時刻。呼び出し側が窓の外を捨てて渡す
+    public static func isOffline(recentIncreases: [Date], now: Date = Date(),
+                                 window: TimeInterval = offlineWindow,
+                                 requiredIncreases: Int = 2) -> Bool {
+        recentIncreases.filter { now.timeIntervalSince($0) <= window }.count >= requiredIncreases
     }
+
+    /// 断の判定に使う時間窓。検知にも解除にも同じ窓を使う。
+    public static let offlineWindow: TimeInterval = 30
 
     // MARK: - R-G08 プロファイル切替
 

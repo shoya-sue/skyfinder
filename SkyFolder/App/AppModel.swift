@@ -567,6 +567,18 @@ final class AppModel: ObservableObject {
 
         switch LifecyclePolicy.terminationDecision(pendingUploads: liveState.pendingUploads) {
         case .askUser(let pending):
+            // **ログアウト・シャットダウン時は尋ねない。**
+            //
+            // OS は数十秒でアプリを強制終了する。ダイアログを出して答えを待っている間に
+            // 殺されると `finishTermination` に到達せず、**R-G10 の記録も残らない**。
+            // 記録が無ければ次回起動の「前回未送信のデータがありました」も出ないので、
+            // ユーザーはデータが失われたことに気づく手段を持たない
+            // — R-G10 が想定している、まさにその場面で唯一の事後通知が消える。
+            if isSystemLogout {
+                logger.notice("ログアウト中のため確認を挟まず、上限まで送信を待つ（R-G10）")
+                await waitForUploadsThenTerminate()
+                return
+            }
             // UI が「送信完了を待つ / そのまま終了」を尋ねる。ここでは即座に終了しない。
             pendingUploadsAtTermination = pending
             return
@@ -586,6 +598,13 @@ final class AppModel: ObservableObject {
             try? await Task.sleep(nanoseconds: 500_000_000)
         }
         if liveState.pendingUploads > 0 {
+            // **ログアウト中は聞き直さない。** 聞いている間に OS が殺すので、
+            // 送り切れなかった事実を記録して終了する（それが R-G10 の唯一の事後通知）。
+            if systemLogoutInProgress {
+                logger.notice("ログアウト時の待機が上限に達した。未送信を記録して終了する（R-G10）")
+                await finishTermination()
+                return
+            }
             // 超過したら再度選択を求める
             pendingUploadsAtTermination = liveState.pendingUploads
             return

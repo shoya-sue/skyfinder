@@ -73,8 +73,11 @@ public actor StatsPoller {
 
     /// 直前に見た `core/stats` の errors。**増加**の検出に使う（§8.2）。
     private var lastCoreErrors: Int?
-    /// 連続して増えた回数。1 回の増加では断と決めない。
-    private var consecutiveErrorIncreases = 0
+    /// errors が増えた時刻。窓の外は捨てる。
+    /// 回数ではなく**時刻**で持つ理由は `LifecyclePolicy.isOffline` の解説を参照
+    /// — ポーリング間隔（前景・転送中は 1 秒）と rclone のリトライ間隔が桁で違うため、
+    /// 「連続 N 回」で数えると実際の断を検知できない。
+    private var errorIncreaseTimestamps: [Date] = []
 
     public init(client: RcClient, intervals: Intervals = Intervals()) {
         self.client = client
@@ -181,16 +184,18 @@ public actor StatsPoller {
         observer?(state)
     }
 
-    /// §8.2: ネットワーク断の検知。判定そのものは `LifecyclePolicy.offlineDecision`
-    /// （純粋関数・テストで固定してある）にあり、ここは状態の持ち回りだけを行う。
+    /// §8.2: ネットワーク断の検知。判定そのものは `LifecyclePolicy.isOffline`
+    /// （純粋関数・テストで固定してある）にあり、ここは増加時刻の持ち回りだけを行う。
     private func updateOfflineState(errors: Int) -> Bool {
-        let decision = LifecyclePolicy.offlineDecision(
-            previousErrors: lastCoreErrors,
-            currentErrors: errors,
-            consecutiveIncreases: consecutiveErrorIncreases)
+        let now = Date()
+        if let previous = lastCoreErrors, errors > previous {
+            errorIncreaseTimestamps.append(now)
+        }
+        // rcd を作り直すと errors は 0 に戻る。減少を増加と誤解しないこと。
         lastCoreErrors = errors
-        consecutiveErrorIncreases = decision.streak
-        return decision.isOffline
+        // 窓の外は捨てる（際限なく溜めない）
+        errorIncreaseTimestamps.removeAll { now.timeIntervalSince($0) > LifecyclePolicy.offlineWindow }
+        return LifecyclePolicy.isOffline(recentIncreases: errorIncreaseTimestamps, now: now)
     }
 
     /// §8.3: 終了判定のように「最新の値でなければ困る」場面で、

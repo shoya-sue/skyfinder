@@ -8,7 +8,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     static let logger = Logger(subsystem: AppIdentity.bundleIdentifier, category: "app")
 
     /// AppModel は SwiftUI 側が所有する。終了時の判定に使うため参照を預かる。
+    ///
+    /// **配線は `SkyFolderApp` の `MenuBarExtra` の label（常駐 UI）で行う。**
+    /// ここが nil のままだと、下のハンドラが全部無言で素通りする。
     weak var model: AppModel?
+
+    /// 配線されていれば返す。されていなければ**記録して気づけるようにする**。
+    ///
+    /// `guard let model else { return }` で黙って抜けると、終了ガードも前景/背景の切替も
+    /// 「動いているつもり」で全滅する。**実際に一度そうなっていた**
+    /// — 代入する箇所が存在せず、Cmd+Q のたびに §8.3 の終了シーケンスが丸ごと素通りし、
+    /// rcd が生きたマウントを保持したまま孤児化していた（M-30）。
+    /// `weak var` が nil でも guard は静かに通るので、**失敗の形が無言になる**のが厄介だった。
+    private func requireModel(_ site: StaticString = #function) -> AppModel? {
+        if let model { return model }
+        Self.logger.fault(
+            "AppModel が AppDelegate に配線されていない（\(String(describing: site), privacy: .public)）。§8.3 の終了ガードと §6.4 の前景/背景切替が働かない")
+        assertionFailure("AppDelegate.model が未配線: \(site)")
+        return nil
+    }
 
     /// §8.6.2 (c): macOS は通常 .app の二重起動を防ぐが、
     /// ターミナルから実行ファイルを直接叩けば回避できる。
@@ -29,7 +47,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// DD-001 R-03 のとおり、VFS write-back により「保存済みに見えるがまだクラウドに無い」データが
     /// 常時存在しうる。終了時にこれを無視して rcd を殺すと、そのデータは失われる。
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
-        guard let model else { return .terminateNow }
+        guard let model = requireModel() else { return .terminateNow }
         if model.isReadyToTerminate { return .terminateNow }
         Task { @MainActor in
             await model.beginTermination(isSystemLogout: false)
@@ -46,7 +64,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NSWorkspace.shared.notificationCenter.addObserver(
             forName: NSWorkspace.willPowerOffNotification, object: nil, queue: .main
         ) { [weak self] _ in
-            guard let model = self?.model else { return }
+            guard let model = self?.requireModel() else { return }
             Task { @MainActor in
                 await model.beginTermination(isSystemLogout: true)
             }
@@ -57,12 +75,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let center = NotificationCenter.default
         center.addObserver(forName: NSApplication.didBecomeActiveNotification,
                            object: nil, queue: .main) { [weak self] _ in
-            guard let model = self?.model else { return }
+            guard let model = self?.requireModel() else { return }
             Task { @MainActor in await model.setForeground(true) }
         }
         center.addObserver(forName: NSApplication.didResignActiveNotification,
                            object: nil, queue: .main) { [weak self] _ in
-            guard let model = self?.model else { return }
+            guard let model = self?.requireModel() else { return }
             Task { @MainActor in await model.setForeground(false) }
         }
     }

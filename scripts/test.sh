@@ -21,6 +21,6 @@ status=${PIPESTATUS[0]}
 set -e
 
 if [ "$status" -ne 0 ]; then
-  echo "テストが失敗しました（xcodebuild exit=$status）" >&2
+  echo "FAILED: xcodebuild exit=$status" >&2
   exit "$status"
 fi
