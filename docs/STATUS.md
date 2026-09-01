@@ -55,7 +55,8 @@
 | **観点を分けた独立レビュー（3 体）を通した** | critical 0 件・**high 7 件**。**7 件すべて修正済み**（M-28）。うち 1 件は SEC-08 の実害（IPTC の `PersonInImage` が公開画像に残っていた） | 3 体とも `REQUEST_CHANGES` を返し、指摘を回収して修正・回帰テストを追加 | 2026-09-01 |
 | **別ベンダーの独立レビューを取得した** | **GitHub Copilot CLI**（`copilot -p`・read-only）で実施し `REQUEST_CHANGES`。high 1 件 — **取り下げた v1.0.0 の DMG が資産として残り、ダウンロード可能だった**。public 化すると SEC-08 の欠陥入りバイナリが世界中から入手可能になる指摘。**資産を削除して対応済み** | 実行ログと、実行前後で作業ツリーが不変であることを確認 | 2026-09-01 |
 | v1.0.0 の無害化 | prerelease へ降格・**配布資産を削除**・ノートを取り下げの記録に差し替え | `gh release view v1.0.0`（assets 0 件） | 2026-09-01 |
-| ライセンス | **MIT License**（`LICENSE`）。同梱 rclone も MIT で、その旨を末尾に明記 | ファイルの存在と README の記述 | 2026-09-01 |
+| **リポジトリを public にした** | `visibility: PUBLIC`。サイトから貼っている GitHub リンク 5 本がいずれも **200** になった | `gh repo view` / `curl` | 2026-09-01 |
+| ライセンス | **MIT License**（`LICENSE` に MIT 全文のみ）。第三者コード（rclone・MIT）の表示は README 側に置く — LICENSE に混ぜると GitHub の検出が通らない | ファイルの存在と README の記述 | 2026-09-01 |
 | 製品サイト | `site/` を Cloudflare Pages（Kojin アカウント・プロジェクト `skyfolder`）へデプロイ。`/` `/robots.txt` `/sitemap.xml` `/llms.txt` `/og.png` がいずれも **200** | `curl` で全エンドポイントを確認 | 2026-09-01 |
 | **Release からダウンロードして動く** | **v1.0.1** を公開。`gh release download` で取得した DMG は **SHA-256 一致**（`33ac4f63…`）、マウントでき、取り出した `.app` の自己診断が **19/20 通過・exit=0**。`rclone-LICENSE.txt` の同梱も確認 | 実際にダウンロードして実行 | 2026-09-01 |
 | **配布物は Gatekeeper に拒否される** | ad-hoc 署名のため `spctl -a -t execute` → **`rejected`**。ダウンロード後は quarantine が付き、**初回はダブルクリックで開かない**。ただし**バンドル自体は健全**（`codesign -v --deep --strict` は通る） | quarantine 属性を付けて `spctl` / `codesign` で判定 | 2026-09-01 |
@@ -109,8 +110,8 @@
 
 | # | 内容 | 完了条件 |
 |---|---|---|
-| 1 | **リポジトリを public にする** | レビューで critical / high が 0 件であることを確認したあと。**public 化は不可逆** |
-| 2 | **カスタムドメイン `skyfolder.fracturelab.dev` を割り当てる** | public 化と**同時**に行う。private のままサイトを検索に載せると、リンク先が 404 のまま SEO される |
+| 1 | **カスタムドメイン `skyfolder.fracturelab.dev` を割り当てる**（Cloudflare ダッシュボード） | `curl -I https://skyfolder.fracturelab.dev/` が 200。**wrangler にドメイン追加のコマンドが無く、API トークンも手元に無いため、この操作だけは手で行う** |
+| 2 | **Search Console / Bing に sitemap を登録する** | `https://skyfolder.fracturelab.dev/sitemap.xml` を送信し、受理される |
 | 3 | **T-G18** — Mac を再起動してマウントが復活するか確かめる | 再起動後に Finder でマウントが見える。結果を §2 か §3 に移す |
 | 4 | （完了）別ベンダーの独立レビュー | **GitHub Copilot CLI で取得済み**（§2）。Codex は 2026-09-01 時点で PATH・npm global・brew のいずれにも存在せず実行できなかった。Grok は 402 |
 
